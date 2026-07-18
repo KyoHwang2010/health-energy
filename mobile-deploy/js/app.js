@@ -4,6 +4,7 @@ class HealthEnergyApp {
     this.logs = [];
     this.activeScreen = 'onboarding';
     this.reportTimeframe = 'weekly';
+    this.reportView = 'calendar';
     this.selectedTimelineDate = 'all';
     this.selectedHomeDate = 'today';
     
@@ -55,6 +56,17 @@ class HealthEnergyApp {
   }
 
   init() {
+    // 기기의 로컬 시간대를 기준으로 'YYYY-MM-DD' 형식의 날짜 문자열을 만든다.
+    // (toISOString()은 UTC 기준이라, 한국(KST, UTC+9) 자정~오전 9시 사이에는
+    //  실제 날짜보다 하루 이전으로 계산되는 오류가 있었다.)
+    this.getLocalDateStr = (date) => {
+      const d = date || new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
     this.registerMobileApp();
 
     // Load data from LocalStorage
@@ -365,12 +377,12 @@ class HealthEnergyApp {
     // Home Date Lookback Arrows
     const btnHomePrev = document.getElementById('btn-home-prev-date');
     if (btnHomePrev) {
-      btnHomePrev.addEventListener('click', () => this.navigateHomeDate(1));
+      btnHomePrev.addEventListener('click', () => this.navigateHomeDate(-1));
     }
     
     const btnHomeNext = document.getElementById('btn-home-next-date');
     if (btnHomeNext) {
-      btnHomeNext.addEventListener('click', () => this.navigateHomeDate(-1));
+      btnHomeNext.addEventListener('click', () => this.navigateHomeDate(1));
     }
 
     // Goal Edit Modal event listeners
@@ -682,7 +694,7 @@ class HealthEnergyApp {
       measurementValue,
       measurementUnit,
       reps,
-      date: now.toISOString().split('T')[0],
+      date: this.getLocalDateStr(now),
       time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     };
 
@@ -870,7 +882,7 @@ class HealthEnergyApp {
       measurementValue: isFlexibility && this.cameraBestFlexibilityDistance !== null ? Number(this.cameraBestFlexibilityDistance.toFixed(1)) : null,
       measurementUnit: isFlexibility ? 'cm' : null,
       handFootDistance: isFlexibility && this.cameraHandFootDistance !== null ? Number(this.cameraHandFootDistance.toFixed(1)) : null,
-      date: now.toISOString().split('T')[0],
+      date: this.getLocalDateStr(now),
       time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     };
 
@@ -1846,7 +1858,7 @@ class HealthEnergyApp {
       memo: `실시간 자동 측정 완료: ${workoutType} 동작을 약 ${data.steps}회 수행하였으며, ${data.distance}km 수준의 열량을 소비했습니다.`,
       method: "auto",
       category: this.getExerciseCategory(selectAutoEx) || this.inferExerciseCategory(workoutType),
-      date: now.toISOString().split('T')[0],
+      date: this.getLocalDateStr(now),
       time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     };
 
@@ -1857,14 +1869,14 @@ class HealthEnergyApp {
   }
 
   // Calculate Health Energy based on logs and streak
-  calculateHealthEnergy() {
-    const todayStr = new Date().toISOString().split('T')[0];
+  calculateHealthEnergy(dateStr) {
+    const targetDateStr = dateStr || this.getLocalDateStr();
     
     // 1. Base starter points
-    let score = 30; 
+    let score = 0; 
 
-    // 2. Add points from today's workouts
-    const todayLogs = this.logs.filter(log => log.date === todayStr);
+    // 2. Add points from that day's workouts
+    const todayLogs = this.logs.filter(log => log.date === targetDateStr);
     let todayWorkoutDuration = 0;
     let cameraScoreSum = 0;
     let cameraScoreCount = 0;
@@ -1901,7 +1913,7 @@ class HealthEnergyApp {
     score += Math.round(stepRatio * 20); // max 20 points from steps
 
     // 4. Streak bonus
-    const streak = this.calculateStreak();
+    const streak = this.calculateStreak(targetDateStr);
     if (streak > 0) {
       if (streak <= 2) score += 8;
       else if (streak <= 5) score += 16;
@@ -1919,36 +1931,23 @@ class HealthEnergyApp {
     return Math.max(0, Math.min(100, score));
   }
 
-  calculateStreak() {
+  calculateStreak(dateStr) {
     if (this.logs.length === 0) return 0;
 
-    const uniqueDates = [...new Set(this.logs.map(log => log.date))].sort().reverse();
-    const todayStr = new Date().toISOString().split('T')[0];
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const uniqueDates = new Set(this.logs.map(log => log.date));
+    const targetDateStr = dateStr || this.getLocalDateStr();
 
-    // Check if user has logs today or yesterday
-    if (uniqueDates[0] !== todayStr && uniqueDates[0] !== yesterdayStr) {
-      return 0;
+    let checkDate = new Date(targetDateStr);
+
+    // 기준 날짜에 아직 기록이 없다면(예: 오늘 아직 운동 전) 전날부터 스트릭을 계산
+    if (!uniqueDates.has(this.getLocalDateStr(checkDate))) {
+      checkDate.setDate(checkDate.getDate() - 1);
     }
 
     let streak = 0;
-    let checkDate = new Date();
-
-    while (true) {
-      const checkStr = checkDate.toISOString().split('T')[0];
-      if (uniqueDates.includes(checkStr)) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1); // move back
-      } else {
-        // If we checked today and they haven't exercised today, keep going to check yesterday
-        if (checkStr === todayStr) {
-          checkDate.setDate(checkDate.getDate() - 1);
-          continue;
-        }
-        break;
-      }
+    while (uniqueDates.has(this.getLocalDateStr(checkDate))) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
     }
 
     return streak;
@@ -2009,48 +2008,33 @@ class HealthEnergyApp {
   }
 
   navigateHomeDate(offset) {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const uniqueDates = [...new Set(this.logs.map(log => log.date))].sort(); // ascending: old to new
-    
-    if (!uniqueDates.includes(todayStr)) {
-      uniqueDates.push(todayStr);
-      uniqueDates.sort();
-    }
-
+    const todayStr = this.getLocalDateStr();
     const currentDateStr = this.selectedHomeDate === 'today' ? todayStr : this.selectedHomeDate;
-    let currentIndex = uniqueDates.indexOf(currentDateStr);
-    
-    if (currentIndex === -1) currentIndex = uniqueDates.length - 1;
 
-    const newIndex = currentIndex + offset;
-    if (newIndex >= 0 && newIndex < uniqueDates.length) {
-      const newDateStr = uniqueDates[newIndex];
-      this.selectedHomeDate = newDateStr === todayStr ? 'today' : newDateStr;
-      this.renderHome();
-    }
+    const newDate = new Date(currentDateStr);
+    newDate.setDate(newDate.getDate() + offset);
+    const newDateStr = this.getLocalDateStr(newDate);
+
+    // 오늘보다 미래로는 이동할 수 없음
+    if (newDateStr > todayStr) return;
+
+    this.selectedHomeDate = newDateStr === todayStr ? 'today' : newDateStr;
+    this.renderHome();
   }
 
   renderHome() {
     if (!this.userProfile) return;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = this.getLocalDateStr();
     const targetDateStr = this.selectedHomeDate === 'today' ? todayStr : this.selectedHomeDate;
 
     // 1. Update Arrow Navigation state and label inside the Card
-    const uniqueDates = [...new Set(this.logs.map(log => log.date))].sort(); // ascending
-    if (!uniqueDates.includes(todayStr)) {
-      uniqueDates.push(todayStr);
-      uniqueDates.sort();
-    }
-
-    const currentIndex = uniqueDates.indexOf(targetDateStr);
-
     const btnHomePrev = document.getElementById('btn-home-prev-date');
     const btnHomeNext = document.getElementById('btn-home-next-date');
     const labelEl = document.getElementById('home-selected-date-label');
 
-    if (btnHomePrev) btnHomePrev.disabled = currentIndex >= uniqueDates.length - 1;
-    if (btnHomeNext) btnHomeNext.disabled = currentIndex <= 0;
+    if (btnHomePrev) btnHomePrev.disabled = false;
+    if (btnHomeNext) btnHomeNext.disabled = targetDateStr === todayStr;
 
     if (labelEl) {
       if (targetDateStr === todayStr) {
@@ -2462,7 +2446,7 @@ class HealthEnergyApp {
       
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       
-      if (dateStr === today.toISOString().split('T')[0]) {
+      if (dateStr === this.getLocalDateStr(today)) {
         dayDiv.classList.add('today');
       }
       
@@ -2539,6 +2523,148 @@ class HealthEnergyApp {
     }
 
     this.renderTimeframeCharts();
+  }
+
+  setReportView(view) {
+    const allowedViews = ['calendar', 'graphs', 'stats', 'fitness'];
+    this.reportView = allowedViews.includes(view) ? view : 'calendar';
+
+    document.querySelectorAll('.report-tab').forEach(button => {
+      const isActive = button.id === `btn-report-view-${this.reportView}`;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', String(isActive));
+    });
+
+    document.querySelectorAll('.report-panel').forEach(panel => {
+      const isActive = panel.id === `report-panel-${this.reportView}`;
+      panel.classList.toggle('active', isActive);
+      panel.hidden = !isActive;
+    });
+
+    if (this.reportView === 'graphs') this.renderTimeframeCharts();
+    if (this.reportView === 'fitness') requestAnimationFrame(() => this.renderFitnessAnalysis());
+  }
+
+  calculateBestStreak() {
+    const uniqueDates = [...new Set(this.logs.map(log => log.date).filter(Boolean))]
+      .map(date => new Date(`${date}T00:00:00`).getTime())
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
+    if (!uniqueDates.length) return 0;
+
+    let best = 1;
+    let current = 1;
+    const oneDay = 24 * 60 * 60 * 1000;
+    for (let i = 1; i < uniqueDates.length; i++) {
+      current = uniqueDates[i] - uniqueDates[i - 1] === oneDay ? current + 1 : 1;
+      best = Math.max(best, current);
+    }
+    return best;
+  }
+
+  renderLifetimeStats() {
+    const totalSteps = this.logs.reduce((sum, log) => sum + (Number(log.steps) || 0), 0);
+    const totalCalories = this.logs.reduce((sum, log) => sum + (Number(log.calories) || 0), 0);
+    const totalMinutes = this.logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+    const activeDates = [...new Set(this.logs.map(log => log.date).filter(Boolean))];
+    const totalEnergy = activeDates.reduce((sum, date) => sum + this.calculateHealthEnergy(date), 0);
+    const values = {
+      'report-total-steps': Math.round(totalSteps).toLocaleString('ko-KR'),
+      'report-total-calories': Math.round(totalCalories).toLocaleString('ko-KR'),
+      'report-total-hours': (totalMinutes / 60).toFixed(totalMinutes >= 60 ? 1 : 2),
+      'report-total-energy': Math.round(totalEnergy).toLocaleString('ko-KR'),
+      'report-best-streak': this.calculateBestStreak().toLocaleString('ko-KR')
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    });
+  }
+
+  renderFitnessAnalysis() {
+    const details = this.getEnergyDetailsData(this.getLocalDateStr());
+    const metrics = [
+      { key: 'endurance', label: '근지구력' },
+      { key: 'strength', label: '근력' },
+      { key: 'cardio', label: '심폐지구력' },
+      { key: 'flexibility', label: '유연성' }
+    ];
+    const canvas = document.getElementById('fitness-radar-canvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2 + 5;
+      const radius = Math.min(width, height) * 0.32;
+      const pointsFor = scale => metrics.map((_, index) => {
+        const angle = -Math.PI / 2 + index * (Math.PI * 2 / metrics.length);
+        return [centerX + Math.cos(angle) * radius * scale, centerY + Math.sin(angle) * radius * scale];
+      });
+      ctx.clearRect(0, 0, width, height);
+      ctx.lineJoin = 'round';
+      [0.25, 0.5, 0.75, 1].forEach(scale => {
+        const points = pointsFor(scale);
+        ctx.beginPath();
+        points.forEach(([x, y], index) => index ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+        ctx.stroke();
+      });
+      pointsFor(1).forEach(([x, y]) => {
+        ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.lineTo(x, y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.stroke();
+      });
+      const dataPoints = metrics.map((metric, index) => {
+        const angle = -Math.PI / 2 + index * (Math.PI * 2 / metrics.length);
+        const scale = Math.max(0.08, details[metric.key] / 100);
+        return [centerX + Math.cos(angle) * radius * scale, centerY + Math.sin(angle) * radius * scale];
+      });
+      ctx.beginPath();
+      dataPoints.forEach(([x, y], index) => index ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(121, 175, 159, 0.3)';
+      ctx.strokeStyle = '#79af9f';
+      ctx.lineWidth = 2.5;
+      ctx.fill(); ctx.stroke();
+      dataPoints.forEach(([x, y]) => {
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#cdb083'; ctx.fill();
+      });
+      ctx.font = '600 13px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      metrics.forEach((metric, index) => {
+        const angle = -Math.PI / 2 + index * (Math.PI * 2 / metrics.length);
+        const x = centerX + Math.cos(angle) * (radius + 28);
+        const y = centerY + Math.sin(angle) * (radius + 25) + 5;
+        ctx.fillStyle = '#f1f1f2';
+        ctx.fillText(metric.label, x, y);
+        ctx.fillStyle = '#79af9f';
+        ctx.font = '700 12px "Segoe UI", sans-serif';
+        ctx.fillText(`${details[metric.key]}점`, x, y + 16);
+        ctx.font = '600 13px "Segoe UI", sans-serif';
+      });
+    }
+
+    const weakest = metrics.reduce((lowest, metric) => details[metric.key] < details[lowest.key] ? metric : lowest, metrics[0]);
+    const recommendations = {
+      strength: ['팔굽혀펴기', '스쿼트', '턱걸이'],
+      endurance: ['플랭크', '런지', '윗몸일으키기'],
+      cardio: ['달리기', '빠르게 걷기', '계단오르기'],
+      flexibility: ['서서 윗몸 앞으로 굽히기', '요가/스트레칭', '필라테스']
+    };
+    const title = document.getElementById('fitness-recommendation-title');
+    const reason = document.getElementById('fitness-recommendation-reason');
+    const list = document.getElementById('fitness-recommendation-list');
+    if (title) title.textContent = `${weakest.label}을 조금 더 채워볼까요?`;
+    if (reason) reason.textContent = `최근 기록에서 ${weakest.label} 점수가 ${details[weakest.key]}점으로 가장 낮게 나타났습니다. 가볍게 시작해 균형을 맞춰보세요.`;
+    if (list) {
+      list.innerHTML = recommendations[weakest.key].map((name, index) => `
+        <button class="fitness-exercise-card" onclick="app.navigateTo('direct-input', '${name}')">
+          <span><i class="fa-solid ${index === 0 ? 'fa-person-running' : 'fa-dumbbell'}"></i></span>
+          <b>${name}</b><small>${weakest.label} 보강 운동</small><i class="fa-solid fa-chevron-right"></i>
+        </button>`).join('');
+    }
   }
 
   renderTimeframeCharts() {
@@ -2619,10 +2745,20 @@ class HealthEnergyApp {
   renderReports() {
     this.renderCalendar();
     this.renderTimeframeCharts();
+    this.renderLifetimeStats();
+    this.renderFitnessAnalysis();
+    this.setReportView(this.reportView);
 
     // Update textual feedbacks based on stats
-    const totalDurationWeek = this.logs.reduce((acc, curr) => acc + curr.duration, 0);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    weekAgo.setHours(0, 0, 0, 0);
+    const totalDurationWeek = this.logs
+      .filter(log => new Date(`${log.date}T00:00:00`) >= weekAgo)
+      .reduce((acc, curr) => acc + (Number(curr.duration) || 0), 0);
     const streak = this.calculateStreak();
+    const streakElement = document.getElementById('report-current-streak');
+    if (streakElement) streakElement.textContent = streak;
     
     // Consistency evaluation text
     const consistencyText = document.getElementById('report-text-consistency');
@@ -2667,7 +2803,7 @@ class HealthEnergyApp {
 
   getEnergyDetailsData(targetDateStr) {
     if (!targetDateStr) {
-      targetDateStr = this.selectedHomeDate === 'today' ? new Date().toISOString().split('T')[0] : this.selectedHomeDate;
+      targetDateStr = this.selectedHomeDate === 'today' ? this.getLocalDateStr() : this.selectedHomeDate;
     }
 
     let strength = 0;
@@ -2681,7 +2817,7 @@ class HealthEnergyApp {
     for (let i = 0; i < 7; i++) {
       const d = new Date(endDate);
       d.setDate(endDate.getDate() - i);
-      past7Days.push(d.toISOString().split('T')[0]);
+      past7Days.push(this.getLocalDateStr(d));
     }
 
     const recentLogs = this.logs.filter(log => past7Days.includes(log.date));
@@ -2708,7 +2844,7 @@ class HealthEnergyApp {
 
   updateEnergyDetails(targetDateStr) {
     if (!targetDateStr) {
-      targetDateStr = this.selectedHomeDate === 'today' ? new Date().toISOString().split('T')[0] : this.selectedHomeDate;
+      targetDateStr = this.selectedHomeDate === 'today' ? this.getLocalDateStr() : this.selectedHomeDate;
     }
 
     const details = this.getEnergyDetailsData(targetDateStr);

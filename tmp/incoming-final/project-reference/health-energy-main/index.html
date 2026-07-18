@@ -636,90 +636,81 @@
 
       <!-- 8. Reports Screen -->
       <section id="screen-report" class="app-screen">
-        <div class="report-heading">
-          <p class="report-eyebrow">나의 활동 데이터</p>
-          <h2>분석 리포트</h2>
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 1.4rem; font-weight: 800;">분석 리포트</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">활동 기록 및 에너지 변화 요인 분석</p>
         </div>
 
-        <div class="report-tabs" role="tablist" aria-label="분석 리포트 보기">
-          <button class="report-tab active" id="btn-report-view-calendar" onclick="app.setReportView('calendar')" role="tab">운동 캘린더</button>
-          <button class="report-tab" id="btn-report-view-graphs" onclick="app.setReportView('graphs')" role="tab">활동 그래프</button>
-          <button class="report-tab" id="btn-report-view-stats" onclick="app.setReportView('stats')" role="tab">통계</button>
-          <button class="report-tab" id="btn-report-view-fitness" onclick="app.setReportView('fitness')" role="tab">기초 체력 분석</button>
-        </div>
-
-        <div class="report-panel active" id="report-panel-calendar" role="tabpanel">
-          <div class="report-streak-card">
-            <div>
-              <span>현재 연속 성취</span>
-              <strong><b id="report-current-streak">0</b>일째 운동 중!</strong>
-            </div>
-            <i class="fa-solid fa-fire"></i>
+        <!-- Interactive Calendar -->
+        <div class="glass-card">
+          <div class="glass-card-title">
+            운동 캘린더
+            <div id="calendar-month-year" style="font-size: 0.9rem; font-weight: 700; color: var(--color-primary); background: rgba(16,185,129,0.1); padding: 4px 10px; border-radius: 12px;">2023 10월</div>
           </div>
-          <div class="glass-card report-card">
-            <div class="glass-card-title">
-              운동 캘린더
-              <div id="calendar-month-year" class="calendar-month-label">이번 달</div>
+          <div class="calendar-container">
+            <div class="calendar-header">
+              <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
             </div>
-            <div class="calendar-container">
-              <div class="calendar-header">
-                <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
-              </div>
-              <div class="calendar-grid" id="calendar-grid"></div>
-            </div>
-            <div id="calendar-selected-logs" class="calendar-selected-logs">
-              <p>날짜를 선택하면 운동 기록이 표시됩니다.</p>
+            <div class="calendar-grid" id="calendar-grid">
+              <!-- Dynamically populated via JS -->
             </div>
           </div>
-        </div>
-
-        <div class="report-panel" id="report-panel-graphs" role="tabpanel" hidden>
-          <div class="timeframe-group">
-            <button class="btn-timeframe active" onclick="app.setReportTimeframe('weekly')" id="btn-tf-weekly">주간</button>
-            <button class="btn-timeframe" onclick="app.setReportTimeframe('monthly')" id="btn-tf-monthly">월간</button>
-            <button class="btn-timeframe" onclick="app.setReportTimeframe('yearly')" id="btn-tf-yearly">연간</button>
-          </div>
-          <div class="glass-card report-card">
-            <div class="glass-card-title"><span id="label-energy-score-title">주간 건강 에너지 점수</span><i class="fa-solid fa-bolt"></i></div>
-            <div class="chart-container" id="chart-energy-score"></div>
-            <p class="chart-description" id="desc-energy-score">기간별 평균 에너지 상태를 보여줍니다.</p>
-          </div>
-          <div class="glass-card report-card">
-            <div class="glass-card-title"><span id="label-workout-duration-title">주간 운동 시간 (분)</span><i class="fa-solid fa-clock"></i></div>
-            <div class="chart-container" id="chart-workout-duration"></div>
-            <p class="chart-description" id="desc-workout-duration">기간별 총 운동 수행 시간의 변화입니다.</p>
-          </div>
-          <div class="glass-card report-card report-feedback-card">
-            <div class="glass-card-title">종합 평가 및 가이드라인</div>
-            <div class="report-feedback-row"><i class="fa-solid fa-circle-check"></i><p id="report-text-consistency">주간 일관성을 분석 중입니다.</p></div>
-            <div class="report-feedback-row"><i class="fa-solid fa-dumbbell"></i><p id="report-text-volume">활동 시간을 분석 중입니다.</p></div>
-            <div class="report-feedback-row"><i class="fa-solid fa-heart"></i><p id="report-text-posture">카메라 자세 기록을 분석 중입니다.</p></div>
+          <div id="calendar-selected-logs" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; min-height: 50px;">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); text-align: center;">날짜를 선택하면 기록이 표시됩니다.</p>
           </div>
         </div>
 
-        <div class="report-panel" id="report-panel-stats" role="tabpanel" hidden>
-          <p class="report-panel-intro">지금까지 쌓인 모든 활동 기록입니다.</p>
-          <div class="lifetime-stats-grid">
-            <article class="lifetime-stat"><i class="fa-solid fa-shoe-prints"></i><span>역대 걸음 수</span><strong id="report-total-steps">0</strong><small>보</small></article>
-            <article class="lifetime-stat"><i class="fa-solid fa-fire-flame-curved"></i><span>역대 소모 칼로리</span><strong id="report-total-calories">0</strong><small>kcal</small></article>
-            <article class="lifetime-stat"><i class="fa-regular fa-clock"></i><span>역대 운동 시간</span><strong id="report-total-hours">0</strong><small>hour</small></article>
-            <article class="lifetime-stat"><i class="fa-solid fa-bolt"></i><span>역대 취득 에너지 점수</span><strong id="report-total-energy">0</strong><small>점</small></article>
-            <article class="lifetime-stat lifetime-stat--wide"><i class="fa-solid fa-trophy"></i><span>역대 최고 연속 성취</span><strong id="report-best-streak">0</strong><small>일</small></article>
-          </div>
+        <!-- Timeframe Selector -->
+        <div class="timeframe-group">
+          <button class="btn-timeframe active" onclick="app.setReportTimeframe('weekly')" id="btn-tf-weekly">주간</button>
+          <button class="btn-timeframe" onclick="app.setReportTimeframe('monthly')" id="btn-tf-monthly">월간</button>
+          <button class="btn-timeframe" onclick="app.setReportTimeframe('yearly')" id="btn-tf-yearly">연간</button>
         </div>
 
-        <div class="report-panel" id="report-panel-fitness" role="tabpanel" hidden>
-          <div class="glass-card report-card fitness-card">
-            <div class="glass-card-title">나의 기초 체력 균형 <i class="fa-solid fa-chart-simple"></i></div>
-            <p class="chart-description">최근 7일 운동 기록을 네 가지 체력 영역으로 분석합니다.</p>
-            <canvas id="fitness-radar-canvas" width="340" height="300" aria-label="기초 체력 레이더 차트"></canvas>
-            <div class="fitness-legend"><span><b></b>나의 체력 점수</span><span>100점 기준</span></div>
+        <!-- 1. Health Energy Score Graph Card -->
+        <div class="glass-card">
+          <div class="glass-card-title">
+            <span id="label-energy-score-title">주간 건강 에너지 점수</span>
+            <i class="fa-solid fa-bolt" style="color: var(--color-warning);"></i>
           </div>
-          <div class="fitness-recommendation">
-            <p class="report-eyebrow">맞춤 추천</p>
-            <h3 id="fitness-recommendation-title">부족한 영역을 채워보세요</h3>
-            <p id="fitness-recommendation-reason">운동 기록을 추가하면 체력 균형에 맞는 운동을 추천해 드립니다.</p>
-            <div id="fitness-recommendation-list"></div>
+          <div class="chart-container" id="chart-energy-score">
+            <!-- Dynamically populated via JS -->
+          </div>
+          <p style="font-size: 0.7rem; color: var(--text-secondary); text-align: center;" id="desc-energy-score">
+            기간별 평균 에너지 상태를 보여줍니다.
+          </p>
+        </div>
+
+        <!-- 2. Workout Duration Graph Card -->
+        <div class="glass-card">
+          <div class="glass-card-title">
+            <span id="label-workout-duration-title">주간 운동 시간 (분)</span>
+            <i class="fa-solid fa-clock" style="color: var(--color-secondary);"></i>
+          </div>
+          <div class="chart-container" id="chart-workout-duration">
+            <!-- Dynamically populated via JS -->
+          </div>
+          <p style="font-size: 0.7rem; color: var(--text-secondary); text-align: center;" id="desc-workout-duration">
+            기간별 총 운동 수행 시간의 변화입니다.
+          </p>
+        </div>
+
+        <!-- Feedback Analysis -->
+        <div class="glass-card">
+          <div class="glass-card-title">종합 평가 및 가이드라인</div>
+          <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-primary);">
+            <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+              <span style="color: var(--color-primary); font-size: 1rem;"><i class="fa-solid fa-circle-check"></i></span>
+              <p id="report-text-consistency">주간 일관성을 분석 중입니다. 꾸준히 기록을 채워보세요.</p>
+            </div>
+            <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+              <span style="color: var(--color-secondary); font-size: 1rem;"><i class="fa-solid fa-dumbbell"></i></span>
+              <p id="report-text-volume">활동 시간 및 세기가 권장 수준에 맞게 진행되는지 모니터링됩니다.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <span style="color: var(--color-accent); font-size: 1rem;"><i class="fa-solid fa-heart"></i></span>
+              <p id="report-text-posture">스쿼트 자세 점수 피드백에 맞춰 신체 균형 상태를 진단합니다.</p>
+            </div>
           </div>
         </div>
       </section>

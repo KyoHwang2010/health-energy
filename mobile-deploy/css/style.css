@@ -1523,3 +1523,320 @@ body {
     height: 64px;
   }
 }
+
+/* Final PDF report screens -------------------------------------------------- */
+.report-heading {
+  margin-bottom: 16px;
+}
+
+.report-heading h2 {
+  margin-top: 2px;
+  font-size: 1.55rem;
+  font-weight: 850;
+  letter-spacing: -0.04em;
+}
+
+.report-eyebrow {
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.report-tabs {
+  display: flex;
+  gap: 7px;
+  margin: 0 -2px 22px;
+  padding: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.report-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.report-tab {
+  min-height: 40px;
+  padding: 9px 13px;
+  border: 1px solid #353537;
+  border-radius: 7px;
+  background: #252527;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.report-tab.active {
+  border-color: var(--color-warning);
+  background: var(--color-warning);
+  color: #1b1b1c;
+}
+
+.report-panel[hidden] {
+  display: none !important;
+}
+
+.report-panel.active {
+  animation: reportPanelIn 0.22s ease;
+}
+
+@keyframes reportPanelIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
+.report-streak-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 104px;
+  margin-bottom: 14px;
+  padding: 20px 22px;
+  border: 1px solid #3a3a3d;
+  border-radius: 8px;
+  background: #2a2a2c;
+}
+
+.report-streak-card span,
+.report-streak-card strong {
+  display: block;
+}
+
+.report-streak-card span {
+  margin-bottom: 7px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.report-streak-card strong {
+  font-size: 1.25rem;
+  letter-spacing: -0.04em;
+}
+
+.report-streak-card strong b {
+  color: var(--color-warning);
+  font-size: 1.65rem;
+}
+
+.report-streak-card > i {
+  color: var(--color-warning);
+  font-size: 2.15rem;
+}
+
+.report-card {
+  border-radius: 8px;
+}
+
+.calendar-month-label {
+  padding: 5px 9px;
+  border: 1px solid rgba(121, 175, 159, 0.35);
+  border-radius: 5px;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.calendar-selected-logs {
+  min-height: 50px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #3b3b3d;
+}
+
+.calendar-selected-logs > p {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.timeframe-group {
+  border: 1px solid #353537;
+  border-radius: 7px;
+  background: #232325;
+}
+
+.btn-timeframe {
+  border-radius: 5px;
+}
+
+.btn-timeframe.active {
+  background: var(--color-warning);
+  box-shadow: none;
+  color: #1b1b1c;
+}
+
+.chart-description,
+.report-panel-intro {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+.chart-description {
+  text-align: center;
+}
+
+.report-panel-intro {
+  margin: -6px 0 16px;
+}
+
+.report-feedback-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 13px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.report-feedback-row i {
+  margin-top: 3px;
+  color: var(--color-primary);
+}
+
+.report-feedback-row:nth-child(3) i { color: var(--color-warning); }
+.report-feedback-row:nth-child(4) i { color: var(--color-accent); }
+
+.lifetime-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lifetime-stat {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  min-height: 146px;
+  padding: 18px;
+  border: 1px solid #39393c;
+  border-radius: 8px;
+  background: #29292b;
+}
+
+.lifetime-stat > i {
+  grid-column: 1 / -1;
+  margin-bottom: 16px;
+  color: var(--color-primary);
+  font-size: 1.2rem;
+}
+
+.lifetime-stat:nth-child(2) > i,
+.lifetime-stat:nth-child(4) > i { color: var(--color-warning); }
+.lifetime-stat:nth-child(5) > i { color: #e3c45d; }
+
+.lifetime-stat span {
+  grid-column: 1 / -1;
+  align-self: end;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+.lifetime-stat strong {
+  align-self: end;
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 1.38rem;
+  line-height: 1;
+  text-overflow: ellipsis;
+}
+
+.lifetime-stat small {
+  align-self: end;
+  padding-left: 4px;
+  color: var(--text-secondary);
+  font-size: 0.67rem;
+}
+
+.lifetime-stat--wide {
+  grid-column: 1 / -1;
+  min-height: 132px;
+}
+
+.fitness-card canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 6px auto 0;
+}
+
+.fitness-legend {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #3a3a3c;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+.fitness-legend b {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+.fitness-recommendation {
+  margin-top: 14px;
+  padding: 21px 18px;
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  background: #222224;
+}
+
+.fitness-recommendation h3 {
+  margin: 5px 0 9px;
+  font-size: 1.15rem;
+  letter-spacing: -0.035em;
+}
+
+.fitness-recommendation > p:not(.report-eyebrow) {
+  margin-bottom: 18px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.fitness-exercise-card {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  width: 100%;
+  min-height: 66px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #3b3b3e;
+  border-radius: 7px;
+  background: #2c2c2e;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.fitness-exercise-card > span {
+  grid-row: 1 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(121, 175, 159, 0.16);
+  color: var(--color-primary);
+}
+
+.fitness-exercise-card b { font-size: 0.78rem; }
+.fitness-exercise-card small { color: var(--text-secondary); font-size: 0.66rem; }
+.fitness-exercise-card > i { grid-column: 3; grid-row: 1 / 3; color: var(--text-secondary); font-size: 0.7rem; }
+
+@media (max-width: 380px) {
+  .report-tab { padding-inline: 10px; font-size: 0.68rem; }
+  .lifetime-stat { min-height: 136px; padding: 15px; }
+  .lifetime-stat strong { font-size: 1.2rem; }
+}

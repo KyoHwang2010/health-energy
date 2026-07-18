@@ -1,4 +1,4 @@
-const CACHE_NAME = 'health-energy-mobile-v1';
+const CACHE_NAME = 'health-energy-mobile-v2';
 const APP_SHELL = [
   './',
   './index.html',

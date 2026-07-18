@@ -4,7 +4,6 @@ class HealthEnergyApp {
     this.logs = [];
     this.activeScreen = 'onboarding';
     this.reportTimeframe = 'weekly';
-    this.reportView = 'calendar';
     this.selectedTimelineDate = 'all';
     this.selectedHomeDate = 'today';
     
@@ -2525,148 +2524,6 @@ class HealthEnergyApp {
     this.renderTimeframeCharts();
   }
 
-  setReportView(view) {
-    const allowedViews = ['calendar', 'graphs', 'stats', 'fitness'];
-    this.reportView = allowedViews.includes(view) ? view : 'calendar';
-
-    document.querySelectorAll('.report-tab').forEach(button => {
-      const isActive = button.id === `btn-report-view-${this.reportView}`;
-      button.classList.toggle('active', isActive);
-      button.setAttribute('aria-selected', String(isActive));
-    });
-
-    document.querySelectorAll('.report-panel').forEach(panel => {
-      const isActive = panel.id === `report-panel-${this.reportView}`;
-      panel.classList.toggle('active', isActive);
-      panel.hidden = !isActive;
-    });
-
-    if (this.reportView === 'graphs') this.renderTimeframeCharts();
-    if (this.reportView === 'fitness') requestAnimationFrame(() => this.renderFitnessAnalysis());
-  }
-
-  calculateBestStreak() {
-    const uniqueDates = [...new Set(this.logs.map(log => log.date).filter(Boolean))]
-      .map(date => new Date(`${date}T00:00:00`).getTime())
-      .filter(Number.isFinite)
-      .sort((a, b) => a - b);
-    if (!uniqueDates.length) return 0;
-
-    let best = 1;
-    let current = 1;
-    const oneDay = 24 * 60 * 60 * 1000;
-    for (let i = 1; i < uniqueDates.length; i++) {
-      current = uniqueDates[i] - uniqueDates[i - 1] === oneDay ? current + 1 : 1;
-      best = Math.max(best, current);
-    }
-    return best;
-  }
-
-  renderLifetimeStats() {
-    const totalSteps = this.logs.reduce((sum, log) => sum + (Number(log.steps) || 0), 0);
-    const totalCalories = this.logs.reduce((sum, log) => sum + (Number(log.calories) || 0), 0);
-    const totalMinutes = this.logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    const activeDates = [...new Set(this.logs.map(log => log.date).filter(Boolean))];
-    const totalEnergy = activeDates.reduce((sum, date) => sum + this.calculateHealthEnergy(date), 0);
-    const values = {
-      'report-total-steps': Math.round(totalSteps).toLocaleString('ko-KR'),
-      'report-total-calories': Math.round(totalCalories).toLocaleString('ko-KR'),
-      'report-total-hours': (totalMinutes / 60).toFixed(totalMinutes >= 60 ? 1 : 2),
-      'report-total-energy': Math.round(totalEnergy).toLocaleString('ko-KR'),
-      'report-best-streak': this.calculateBestStreak().toLocaleString('ko-KR')
-    };
-    Object.entries(values).forEach(([id, value]) => {
-      const element = document.getElementById(id);
-      if (element) element.textContent = value;
-    });
-  }
-
-  renderFitnessAnalysis() {
-    const details = this.getEnergyDetailsData(this.getLocalDateStr());
-    const metrics = [
-      { key: 'endurance', label: '근지구력' },
-      { key: 'strength', label: '근력' },
-      { key: 'cardio', label: '심폐지구력' },
-      { key: 'flexibility', label: '유연성' }
-    ];
-    const canvas = document.getElementById('fitness-radar-canvas');
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      const width = canvas.width;
-      const height = canvas.height;
-      const centerX = width / 2;
-      const centerY = height / 2 + 5;
-      const radius = Math.min(width, height) * 0.32;
-      const pointsFor = scale => metrics.map((_, index) => {
-        const angle = -Math.PI / 2 + index * (Math.PI * 2 / metrics.length);
-        return [centerX + Math.cos(angle) * radius * scale, centerY + Math.sin(angle) * radius * scale];
-      });
-      ctx.clearRect(0, 0, width, height);
-      ctx.lineJoin = 'round';
-      [0.25, 0.5, 0.75, 1].forEach(scale => {
-        const points = pointsFor(scale);
-        ctx.beginPath();
-        points.forEach(([x, y], index) => index ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
-        ctx.closePath();
-        ctx.strokeStyle = 'rgba(255,255,255,0.13)';
-        ctx.stroke();
-      });
-      pointsFor(1).forEach(([x, y]) => {
-        ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.lineTo(x, y);
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.stroke();
-      });
-      const dataPoints = metrics.map((metric, index) => {
-        const angle = -Math.PI / 2 + index * (Math.PI * 2 / metrics.length);
-        const scale = Math.max(0.08, details[metric.key] / 100);
-        return [centerX + Math.cos(angle) * radius * scale, centerY + Math.sin(angle) * radius * scale];
-      });
-      ctx.beginPath();
-      dataPoints.forEach(([x, y], index) => index ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(121, 175, 159, 0.3)';
-      ctx.strokeStyle = '#79af9f';
-      ctx.lineWidth = 2.5;
-      ctx.fill(); ctx.stroke();
-      dataPoints.forEach(([x, y]) => {
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#cdb083'; ctx.fill();
-      });
-      ctx.font = '600 13px "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      metrics.forEach((metric, index) => {
-        const angle = -Math.PI / 2 + index * (Math.PI * 2 / metrics.length);
-        const x = centerX + Math.cos(angle) * (radius + 28);
-        const y = centerY + Math.sin(angle) * (radius + 25) + 5;
-        ctx.fillStyle = '#f1f1f2';
-        ctx.fillText(metric.label, x, y);
-        ctx.fillStyle = '#79af9f';
-        ctx.font = '700 12px "Segoe UI", sans-serif';
-        ctx.fillText(`${details[metric.key]}점`, x, y + 16);
-        ctx.font = '600 13px "Segoe UI", sans-serif';
-      });
-    }
-
-    const weakest = metrics.reduce((lowest, metric) => details[metric.key] < details[lowest.key] ? metric : lowest, metrics[0]);
-    const recommendations = {
-      strength: ['팔굽혀펴기', '스쿼트', '턱걸이'],
-      endurance: ['플랭크', '런지', '윗몸일으키기'],
-      cardio: ['달리기', '빠르게 걷기', '계단오르기'],
-      flexibility: ['서서 윗몸 앞으로 굽히기', '요가/스트레칭', '필라테스']
-    };
-    const title = document.getElementById('fitness-recommendation-title');
-    const reason = document.getElementById('fitness-recommendation-reason');
-    const list = document.getElementById('fitness-recommendation-list');
-    if (title) title.textContent = `${weakest.label}을 조금 더 채워볼까요?`;
-    if (reason) reason.textContent = `최근 기록에서 ${weakest.label} 점수가 ${details[weakest.key]}점으로 가장 낮게 나타났습니다. 가볍게 시작해 균형을 맞춰보세요.`;
-    if (list) {
-      list.innerHTML = recommendations[weakest.key].map((name, index) => `
-        <button class="fitness-exercise-card" onclick="app.navigateTo('direct-input', '${name}')">
-          <span><i class="fa-solid ${index === 0 ? 'fa-person-running' : 'fa-dumbbell'}"></i></span>
-          <b>${name}</b><small>${weakest.label} 보강 운동</small><i class="fa-solid fa-chevron-right"></i>
-        </button>`).join('');
-    }
-  }
-
   renderTimeframeCharts() {
     const scoreContainer = document.getElementById('chart-energy-score');
     const durationContainer = document.getElementById('chart-workout-duration');
@@ -2745,20 +2602,10 @@ class HealthEnergyApp {
   renderReports() {
     this.renderCalendar();
     this.renderTimeframeCharts();
-    this.renderLifetimeStats();
-    this.renderFitnessAnalysis();
-    this.setReportView(this.reportView);
 
     // Update textual feedbacks based on stats
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 6);
-    weekAgo.setHours(0, 0, 0, 0);
-    const totalDurationWeek = this.logs
-      .filter(log => new Date(`${log.date}T00:00:00`) >= weekAgo)
-      .reduce((acc, curr) => acc + (Number(curr.duration) || 0), 0);
+    const totalDurationWeek = this.logs.reduce((acc, curr) => acc + curr.duration, 0);
     const streak = this.calculateStreak();
-    const streakElement = document.getElementById('report-current-streak');
-    if (streakElement) streakElement.textContent = streak;
     
     // Consistency evaluation text
     const consistencyText = document.getElementById('report-text-consistency');
