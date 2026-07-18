@@ -10,6 +10,12 @@ class HealthEnergyApp {
     // Camera Mock State
     this.cameraReps = 0;
     this.cameraScores = [];
+    this.cameraLiveScore = null;
+    this.cameraFlexibilityDistance = null;
+    this.cameraHandFootDistance = null;
+    this.cameraBestFlexibilityDistance = null;
+    this.cameraStartedAt = null;
+    this.cameraElapsedIntervalId = null;
     this.webcamStream = null;
     this.cameraSocket = null;
     this.frameIntervalId = null;
@@ -43,7 +49,6 @@ class HealthEnergyApp {
     this.stopWebcam = this.stopWebcam.bind(this);
     this.handleSensorUpdate = this.handleSensorUpdate.bind(this);
     this.toggleSensorTracking = this.toggleSensorTracking.bind(this);
-    this.speedUpSensor = this.speedUpSensor.bind(this);
     this.finishAutoWorkout = this.finishAutoWorkout.bind(this);
     
     this.init();
@@ -59,10 +64,14 @@ class HealthEnergyApp {
     if (savedProfile) {
       this.userProfile = JSON.parse(savedProfile);
       this.logs = savedLogs ? JSON.parse(savedLogs) : [];
-      
-      // Seed mock records if logs are completely empty to make timeline/reports look nice
-      if (this.logs.length === 0) {
-        this.seedMockLogs();
+      // Remove the four legacy demonstration records that earlier versions created automatically.
+      const legacyDemoRecords = new Set([
+        '35|160|auto|4200', '8|32|camera|40', '50|220|direct|', '45|210|auto|6200'
+      ]);
+      const retainedLogs = this.logs.filter(log => !legacyDemoRecords.has(`${log.duration}|${log.calories}|${log.method}|${log.steps ?? log.reps ?? ''}`));
+      if (retainedLogs.length !== this.logs.length) {
+        this.logs = retainedLogs;
+        localStorage.setItem('he_exercise_logs', JSON.stringify(this.logs));
       }
       
       this.activeScreen = 'home';
@@ -249,12 +258,20 @@ class HealthEnergyApp {
           if (val) {
             workspace.style.display = 'block';
             placeholder.style.display = 'none';
-            if (repLabel) repLabel.textContent = `${val} 횟수`;
+            const isFlexibility = this.isCameraFlexibilityExercise(val);
+            if (repLabel) repLabel.textContent = isFlexibility ? '운동시간' : `${val} 횟수`;
             if (btnSim) btnSim.textContent = `${val} 1회 성공`;
+            const distanceBox = document.getElementById('camera-flexibility-distance-box');
+            if (distanceBox) distanceBox.style.display = isFlexibility ? '' : 'none';
             
             // Reset camera values
             this.cameraReps = 0;
             this.cameraScores = [];
+            this.cameraLiveScore = null;
+            this.cameraFlexibilityDistance = null;
+            this.cameraHandFootDistance = null;
+            this.cameraBestFlexibilityDistance = null;
+            this.cameraStartedAt = null;
             this.updateCameraDisplay();
             
             const statusMsg = document.getElementById('camera-status-msg');
@@ -277,9 +294,6 @@ class HealthEnergyApp {
     const btnSensorToggle = document.getElementById('btn-sensor-toggle');
     if (btnSensorToggle) btnSensorToggle.addEventListener('click', this.toggleSensorTracking);
 
-    const btnSensorSpeed = document.getElementById('btn-sensor-speedup');
-    if (btnSensorSpeed) btnSensorSpeed.addEventListener('click', this.speedUpSensor);
-
     const btnFinishAuto = document.getElementById('btn-finish-auto-workout');
     if (btnFinishAuto) btnFinishAuto.addEventListener('click', this.finishAutoWorkout);
 
@@ -295,20 +309,22 @@ class HealthEnergyApp {
           if (val) {
             workspace.style.display = 'block';
             placeholder.style.display = 'none';
-            if (stepsLabel) stepsLabel.textContent = `${val} 횟수 / 걸음`;
+            if (stepsLabel) stepsLabel.textContent = val === '달리기' ? '흔들림 감지 걸음 수' : `${val} 횟수`;
             
             // Reset sensor simulator variables
             window.sensorSimulator.reset();
             const min = "00";
             const sec = "00";
             document.getElementById('auto-duration').textContent = `${min}:${sec}`;
-            document.getElementById('auto-steps').textContent = `0 회`;
+            document.getElementById('auto-steps').textContent = val === '달리기' ? '0 걸음' : '0 회';
             document.getElementById('auto-distance').textContent = `0.00 km`;
             document.getElementById('auto-calories').textContent = `0 kcal`;
             document.getElementById('auto-speed').innerHTML = `0.0 <span style="font-size: 1rem; font-weight: 500; color: var(--text-secondary);">km/h</span>`;
             
             const statusMsg = document.getElementById('auto-tracking-status');
-            if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-pause"></i> 일시 정지됨';
+            if (statusMsg) statusMsg.innerHTML = val === '달리기'
+              ? '<i class="fa-solid fa-mobile-screen"></i> 시작 후 스마트폰을 들거나 주머니에 넣고 달려주세요'
+              : '<i class="fa-solid fa-pause"></i> 일시 정지됨';
           } else {
             workspace.style.display = 'none';
             placeholder.style.display = 'flex';
@@ -469,6 +485,11 @@ class HealthEnergyApp {
 
       this.cameraReps = 0;
       this.cameraScores = [];
+      this.cameraFlexibilityDistance = null;
+      this.cameraHandFootDistance = null;
+      this.cameraBestFlexibilityDistance = null;
+      const distanceBox = document.getElementById('camera-flexibility-distance-box');
+      if (distanceBox) distanceBox.style.display = 'none';
       this.updateCameraDisplay();
       
       const statusMsg = document.getElementById('camera-status-msg');
@@ -496,14 +517,6 @@ class HealthEnergyApp {
         toggleBtn.textContent = "시작";
         toggleBtn.style.background = "var(--color-primary)";
       }
-      const speedBtn = document.getElementById('btn-sensor-speedup');
-      if (speedBtn) {
-        speedBtn.disabled = true;
-        speedBtn.textContent = "가속 시뮬레이션";
-        speedBtn.style.background = "var(--card-bg)";
-        speedBtn.style.borderColor = "var(--card-border)";
-      }
-
       document.getElementById('auto-duration').textContent = "00:00";
       document.getElementById('auto-steps').textContent = "0 회";
       document.getElementById('auto-distance').textContent = "0.00 km";
@@ -554,11 +567,6 @@ class HealthEnergyApp {
     this.userProfile = { name, age, gender, height, weight, calorieGoal, durationGoal, stepGoal };
     localStorage.setItem('he_user_profile', JSON.stringify(this.userProfile));
     
-    // Seed mock logs if empty
-    if (this.logs.length === 0) {
-      this.seedMockLogs();
-    }
-
     this.navigateTo('home');
   }
 
@@ -769,33 +777,44 @@ class HealthEnergyApp {
   updateCameraDisplay() {
     const repCountEl = document.getElementById('camera-rep-count');
     const postureScoreEl = document.getElementById('camera-posture-score');
+    const distanceEl = document.getElementById('camera-flexibility-distance');
+    const isFlexibility = this.isCameraFlexibilityExercise(document.getElementById('select-camera-exercise')?.value);
 
     if (repCountEl) {
-      repCountEl.innerHTML = `${this.cameraReps} <span style="font-size: 1rem;">회</span>`;
+      repCountEl.innerHTML = isFlexibility ? this.formatCameraElapsed() : `${this.cameraReps} <span style="font-size: 1rem;">회</span>`;
     }
 
     if (postureScoreEl) {
-      if (this.cameraScores.length > 0) {
+      if (isFlexibility && this.cameraLiveScore !== null) {
+        postureScoreEl.innerHTML = `${this.cameraLiveScore} <span style="font-size: 1rem;">점</span>`;
+      } else if (this.cameraScores.length > 0) {
         const avg = Math.round(this.cameraScores.reduce((a, b) => a + b, 0) / this.cameraScores.length);
         postureScoreEl.innerHTML = `${avg} <span style="font-size: 1rem;">점</span>`;
       } else {
         postureScoreEl.innerHTML = `-- <span style="font-size: 1rem;">점</span>`;
       }
     }
+
+    if (distanceEl) {
+      distanceEl.innerHTML = isFlexibility && this.cameraFlexibilityDistance !== null
+        ? `${this.cameraFlexibilityDistance.toFixed(1)} <span style="font-size: 1rem;">cm</span>`
+        : `-- <span style="font-size: 1rem;">cm</span>`;
+    }
   }
 
   finishCameraWorkout() {
     const selectCameraEx = document.getElementById('select-camera-exercise');
     const workoutType = selectCameraEx ? selectCameraEx.value : "스쿼트";
+    const isFlexibility = this.isCameraFlexibilityExercise(workoutType);
 
-    if (this.cameraReps === 0) {
+    if ((!isFlexibility && this.cameraReps === 0) || (isFlexibility && this.cameraScores.length === 0)) {
       alert(`적어도 1회 이상 ${workoutType}를 수행해야 저장됩니다!`);
       return;
     }
 
     const avgScore = Math.round(this.cameraScores.reduce((a, b) => a + b, 0) / this.cameraScores.length);
-    const duration = Math.ceil(this.cameraReps * 3.5 / 60); // approx 3.5 seconds per rep
-    const calories = Math.round(this.cameraReps * 0.7);
+    const duration = isFlexibility ? Math.max(1, Math.ceil(this.getCameraElapsedSeconds() / 60)) : Math.ceil(this.cameraReps * 3.5 / 60);
+    const calories = isFlexibility ? Math.max(1, Math.round(duration * 2.5)) : Math.round(this.cameraReps * 0.7);
 
     const now = new Date();
     const newLog = {
@@ -804,10 +823,13 @@ class HealthEnergyApp {
       duration,
       calories,
       intensity: avgScore > 80 ? "medium" : "low",
-      memo: `[카메라] ${workoutType} ${this.cameraReps}회 완료. 평균 점수: ${avgScore}점.`,
+      memo: isFlexibility ? `[카메라] ${workoutType} ${this.formatCameraElapsed()} 측정 완료. 바닥까지 최단 거리: ${this.cameraBestFlexibilityDistance?.toFixed(1) ?? '--'}cm, 손끝과 발끝 거리: ${this.cameraHandFootDistance?.toFixed(1) ?? '--'}cm, 평균 점수: ${avgScore}점.` : `[카메라] ${workoutType} ${this.cameraReps}회 완료. 평균 점수: ${avgScore}점.`,
       method: "camera",
       reps: this.cameraReps,
       postureScore: avgScore,
+      measurementValue: isFlexibility && this.cameraBestFlexibilityDistance !== null ? Number(this.cameraBestFlexibilityDistance.toFixed(1)) : null,
+      measurementUnit: isFlexibility ? 'cm' : null,
+      handFootDistance: isFlexibility && this.cameraHandFootDistance !== null ? Number(this.cameraHandFootDistance.toFixed(1)) : null,
       date: now.toISOString().split('T')[0],
       time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     };
@@ -816,6 +838,27 @@ class HealthEnergyApp {
     localStorage.setItem('he_exercise_logs', JSON.stringify(this.logs));
 
     this.navigateTo('home');
+  }
+
+  getCameraElapsedSeconds() {
+    return this.cameraStartedAt ? Math.max(0, Math.floor((Date.now() - this.cameraStartedAt) / 1000)) : 0;
+  }
+
+  formatCameraElapsed() {
+    const seconds = this.getCameraElapsedSeconds();
+    return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  }
+
+  startFlexibilityTimer() {
+    if (!this.isCameraFlexibilityExercise(document.getElementById('select-camera-exercise')?.value)) return;
+    this.cameraStartedAt = Date.now();
+    if (this.cameraElapsedIntervalId) clearInterval(this.cameraElapsedIntervalId);
+    this.cameraElapsedIntervalId = setInterval(() => this.updateCameraDisplay(), 1000);
+    this.updateCameraDisplay();
+  }
+
+  isCameraFlexibilityExercise(exercise) {
+    return ['서서 상체 숙이기', '서서 윗몸 앞으로 굽히기'].includes(exercise);
   }
 
   async startWebcam() {
@@ -869,6 +912,7 @@ class HealthEnergyApp {
       video.style.transform = cameraTransform;
       if (skeletonCanvas) skeletonCanvas.style.transform = cameraTransform;
       await video.play();
+      this.startFlexibilityTimer();
       await this.requestWakeLock();
 
       if (statusMsg) {
@@ -949,9 +993,9 @@ class HealthEnergyApp {
           },
           runningMode: 'VIDEO',
           numPoses: 1,
-          minPoseDetectionConfidence: 0.7,
-          minPosePresenceConfidence: 0.7,
-          minTrackingConfidence: 0.7
+          minPoseDetectionConfidence: 0.6,
+          minPosePresenceConfidence: 0.6,
+          minTrackingConfidence: 0.6
         };
         try {
           this.poseLandmarker = await vision.PoseLandmarker.createFromOptions(fileset, {
@@ -1018,9 +1062,9 @@ class HealthEnergyApp {
     }
 
     this.fullBodyStableFrames++;
-    if (this.fullBodyStableFrames < 3) {
+    if (this.fullBodyStableFrames < 2) {
       if (statusMsg) {
-        statusMsg.textContent = `신체 확인 중... ${this.fullBodyStableFrames}/3`;
+        statusMsg.textContent = `신체 확인 중... ${this.fullBodyStableFrames}/2`;
         statusMsg.style.color = 'var(--color-secondary)';
       }
       return;
@@ -1033,7 +1077,7 @@ class HealthEnergyApp {
     const groups = this.getRequiredPoseSideGroups(exercise);
     const isUsable = index => {
       const point = landmarks[index];
-      return point && (point.visibility ?? 0) >= 0.3 && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
+      return point && (point.visibility ?? 0) >= 0.22 && point.x >= -0.03 && point.x <= 1.03 && point.y >= -0.03 && point.y <= 1.03;
     };
     const leftVisible = groups.left.every(isUsable);
     const rightVisible = groups.right.every(isUsable);
@@ -1052,7 +1096,7 @@ class HealthEnergyApp {
     const ys = visiblePoints.map(point => point.y);
     const bodyWidth = Math.max(...xs) - Math.min(...xs);
     const bodyHeight = Math.max(...ys) - Math.min(...ys);
-    if (Math.max(bodyWidth, bodyHeight) < 0.25) {
+    if (Math.max(bodyWidth, bodyHeight) < 0.2) {
       return { visible: false, message: `${exercise}에 필요한 주요 부위가 너무 작게 보입니다. 카메라 위치를 조정하세요.` };
     }
     return { visible: true, message: '' };
@@ -1061,11 +1105,13 @@ class HealthEnergyApp {
   getRequiredPoseSideGroups(exercise) {
     const upperBody = { left: [11, 13, 15, 23], right: [12, 14, 16, 24] };
     const lowerBody = { left: [11, 23, 25, 27], right: [12, 24, 26, 28] };
+    const flexibility = { left: [11, 23, 25, 27, 19, 31], right: [12, 24, 26, 28, 20, 32] };
     const pushUp = { left: [11, 13, 15, 23, 27], right: [12, 14, 16, 24, 28] };
     const crunch = { left: [11, 23, 25], right: [12, 24, 26] };
     if (['바이셉 컬', '레터럴 레이즈', '오버헤드 프레스'].includes(exercise)) return upperBody;
     if (exercise === '팔굽혀펴기') return pushUp;
     if (exercise === '크런치') return crunch;
+    if (this.isCameraFlexibilityExercise(exercise)) return flexibility;
     return lowerBody;
   }
 
@@ -1080,12 +1126,18 @@ class HealthEnergyApp {
       '레그레이즈': [11, 12, 23, 24, 25, 26, 27, 28],
       '니 레이즈': [11, 12, 23, 24, 25, 26, 27, 28],
       '니 프레스': [11, 12, 23, 24, 25, 26, 27, 28],
-      '크런치': [11, 12, 23, 24, 25, 26]
+      '크런치': [11, 12, 23, 24, 25, 26],
+      '서서 상체 숙이기': [11, 12, 23, 24, 25, 26, 27, 28, 19, 20, 31, 32],
+      '서서 윗몸 앞으로 굽히기': [11, 12, 23, 24, 25, 26, 27, 28, 19, 20, 31, 32]
     };
     return requiredByExercise[exercise] || requiredByExercise['스쿼트'];
   }
 
   evaluateExercisePose(exercise, p) {
+    if (this.isCameraFlexibilityExercise(exercise)) {
+      this.evaluateFlexibilityPose(p);
+      return;
+    }
     const angle = (a, b, c) => this.calculateJointAngle(p[a], p[b], p[c]);
     const sideValue = (left, right) => this.poseVisibleSide === 'left'
       ? left
@@ -1116,75 +1168,75 @@ class HealthEnergyApp {
 
     switch (exercise) {
       case '바이셉 컬':
-        start = elbow > 125 && shoulder < 60;
-        end = elbow < 95 && shoulder < 65;
-        postureValid = shoulder < 75;
+        start = elbow > 115 && shoulder < 70;
+        end = elbow < 105 && shoulder < 75;
+        postureValid = shoulder < 85;
         cue = '팔꿈치를 몸통 옆에 고정하고 양팔을 함께 굽히세요.';
         formScore = 96 - Math.max(0, shoulder - 20) * 0.5;
         break;
       case '레터럴 레이즈':
-        start = shoulder < 45 && elbow > 120;
-        end = shoulder > 50 && shoulder < 130 && elbow > 120;
-        postureValid = elbow > 115;
+        start = shoulder < 55 && elbow > 110;
+        end = shoulder > 45 && shoulder < 140 && elbow > 110;
+        postureValid = elbow > 105;
         cue = '팔꿈치를 편 채 양팔을 어깨 높이까지만 올리세요.';
         formScore = 96 - Math.abs(90 - shoulder) * 0.25;
         break;
       case '오버헤드 프레스':
-        start = elbow > 35 && elbow < 135 && !wristsAboveShoulders;
-        end = elbow > 135 && wristsAboveShoulders;
-        postureValid = torsoOffset < 0.3;
+        start = elbow > 25 && elbow < 145 && !wristsAboveShoulders;
+        end = elbow > 125 && wristsAboveShoulders;
+        postureValid = torsoOffset < 0.35;
         cue = '몸통을 세우고 양손을 머리 위로 끝까지 밀어 올리세요.';
         formScore = 96 - Math.max(0, 170 - elbow) * 0.25;
         break;
       case '팔굽혀펴기': {
-        const horizontal = Math.abs(shoulderPoint.y - anklePoint.y) < 0.38;
-        start = elbow > 130 && bodyLine > 135 && horizontal;
-        end = elbow > 40 && elbow < 120 && bodyLine > 130 && horizontal;
-        postureValid = bodyLine > 125 && horizontal;
+        const horizontal = Math.abs(shoulderPoint.y - anklePoint.y) < 0.42;
+        start = elbow > 120 && bodyLine > 130 && horizontal;
+        end = elbow > 35 && elbow < 125 && bodyLine > 125 && horizontal;
+        postureValid = bodyLine > 120 && horizontal;
         cue = '머리부터 발목까지 일직선을 유지하며 가슴을 낮추세요.';
         formScore = 96 - Math.max(0, 175 - bodyLine) * 0.6;
         break;
       }
       case '윗몸일으키기':
-        start = hip > 125 && knee > 35 && knee < 165;
-        end = hip > 35 && hip < 125 && knee > 35 && knee < 165;
-        postureValid = knee > 25 && knee < 175;
+        start = hip > 115 && knee > 30 && knee < 170;
+        end = hip > 30 && hip < 135 && knee > 30 && knee < 170;
+        postureValid = knee > 20 && knee < 178;
         cue = '무릎을 고정하고 상체 전체를 골반 쪽으로 일으키세요.';
         formScore = 94 - symmetry * 0.3;
         break;
       case '레그레이즈':
-        start = hip > 125 && knee > 130;
-        end = hip > 40 && hip < 125 && knee > 125;
-        postureValid = knee > 120;
+        start = hip > 115 && knee > 120;
+        end = hip > 30 && hip < 135 && knee > 115;
+        postureValid = knee > 110;
         cue = '양 무릎을 편 채 다리를 함께 들어 올리세요.';
         formScore = 96 - Math.max(0, 170 - knee) * 0.5;
         break;
       case '니 레이즈':
-        start = hip > 130 && knee > 130;
-        end = hip < 115 && knee < 135;
-        postureValid = this.poseVisibleSide !== 'both' || Math.abs(leftHip - rightHip) < 55;
+        start = hip > 120 && knee > 120;
+        end = hip < 125 && knee < 145;
+        postureValid = this.poseVisibleSide !== 'both' || Math.abs(leftHip - rightHip) < 65;
         cue = '양 무릎을 함께 굽혀 골반 높이까지 당기세요.';
         formScore = 94 - symmetry * 0.3;
         break;
       case '니 프레스':
-        start = hip < 125 && knee < 135;
-        end = hip > 130 && knee > 140;
-        postureValid = symmetry < 50;
+        start = hip < 135 && knee < 145;
+        end = hip > 120 && knee > 130;
+        postureValid = symmetry < 60;
         cue = '양 무릎을 가슴 쪽에서 시작해 같은 속도로 끝까지 펴세요.';
         formScore = 95 - symmetry * 0.4;
         break;
       case '크런치':
-        start = hip > 130 && knee > 35 && knee < 165;
-        end = hip > 65 && hip < 115 && knee > 35 && knee < 165;
-        postureValid = knee > 25 && knee < 175;
+        start = hip > 120 && knee > 30 && knee < 170;
+        end = hip > 55 && hip < 125 && knee > 30 && knee < 170;
+        postureValid = knee > 20 && knee < 178;
         cue = '허리를 과하게 들지 말고 어깨뼈만 바닥에서 들어 올리세요.';
         formScore = 92 - symmetry * 0.25;
         break;
       case '스쿼트':
       default:
-        start = knee > 135 && hip > 125;
-        end = knee > 50 && knee < 135 && hip > 35 && hip < 145;
-        postureValid = knee > 35 && hip > 25 && symmetry < 55;
+        start = knee > 125 && hip > 115;
+        end = knee > 45 && knee < 145 && hip > 25 && hip < 155;
+        postureValid = knee > 25 && hip > 15 && symmetry < 65;
         cue = '양 무릎 높이를 맞추고 엉덩이를 뒤로 내려 허벅지가 충분히 낮아지게 하세요.';
         formScore = 96 - symmetry * 0.5 - Math.abs(92 - knee) * 0.12;
         break;
@@ -1194,7 +1246,7 @@ class HealthEnergyApp {
     if (!postureValid) {
       this.poseInvalidFrames++;
       this.poseStableFrames = 0;
-      if (this.poseInvalidFrames >= 6) this.resetPoseExerciseState(false);
+      if (this.poseInvalidFrames >= 8) this.resetPoseExerciseState(false);
       if (statusMsg) {
         statusMsg.textContent = `자세를 교정하세요 · ${cue}`;
         statusMsg.style.color = 'var(--color-accent)';
@@ -1219,7 +1271,7 @@ class HealthEnergyApp {
       return;
     }
 
-    if (Date.now() - this.poseRepStartedAt > 6000) {
+    if (Date.now() - this.poseRepStartedAt > 8000) {
       this.resetPoseExerciseState(false);
       if (statusMsg) statusMsg.textContent = `동작 시간이 너무 깁니다. ${cue}`;
       return;
@@ -1240,6 +1292,83 @@ class HealthEnergyApp {
       statusMsg.textContent = end ? '끝 자세 확인 중...' : cue;
       statusMsg.style.color = 'var(--text-primary)';
     }
+  }
+
+  evaluateFlexibilityPose(p) {
+    const pick = (left, right) => this.poseVisibleSide === 'left' ? left : this.poseVisibleSide === 'right' ? right : (left + right) / 2;
+    const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const leftFinger = p[19] || p[15];
+    const rightFinger = p[20] || p[16];
+    const leftToe = p[31] || p[27];
+    const rightToe = p[32] || p[28];
+    const fingertipDistance = pick(distance(leftFinger, leftToe), distance(rightFinger, rightToe));
+    const bodyLength = pick(distance(p[11], p[27]), distance(p[12], p[28]));
+    const fingerY = pick(leftFinger.y, rightFinger.y);
+    const floorY = pick(Math.max(leftToe.y, p[27].y), Math.max(rightToe.y, p[28].y));
+    const shoulderY = pick(p[11].y, p[12].y);
+    const noseVisible = p[0] && (p[0].visibility ?? 0) >= 0.2;
+    const estimatedHeadY = noseVisible ? p[0].y : shoulderY - Math.max(0.04, (floorY - shoulderY) * 0.18);
+    const visibleBodyHeight = Math.max(0.25, floorY - estimatedHeadY);
+    const userHeightCm = Number(this.userProfile?.height) || 165;
+    const cmPerFrameUnit = Math.max(100, Math.min(500, userHeightCm / visibleBodyHeight));
+    const floorGapCm = Math.max(0, floorY - fingerY) * cmPerFrameUnit;
+    const handFootDistanceCm = fingertipDistance * cmPerFrameUnit;
+    const kneeAngle = pick(this.calculateJointAngle(p[23], p[25], p[27]), this.calculateJointAngle(p[24], p[26], p[28]));
+    const hipAngle = pick(this.calculateJointAngle(p[11], p[23], p[25]), this.calculateJointAngle(p[12], p[24], p[26]));
+    const normalizedDistance = fingertipDistance / Math.max(bodyLength, 0.1);
+    const reachScore = Math.max(0, Math.min(100, 100 - floorGapCm * 3.5));
+    const kneeScore = Math.max(0, Math.min(100, 100 - Math.max(0, 150 - kneeAngle) * 1.2));
+    const hingeScore = Math.max(0, Math.min(100, 100 - Math.max(0, hipAngle - 115) * 0.9));
+    const score = Math.round(reachScore * 0.7 + kneeScore * 0.15 + hingeScore * 0.15);
+    const statusMsg = document.getElementById('camera-status-msg');
+
+    this.cameraLiveScore = score;
+    this.cameraFlexibilityDistance = floorGapCm;
+    this.cameraHandFootDistance = handFootDistanceCm;
+    this.cameraBestFlexibilityDistance = this.cameraBestFlexibilityDistance === null
+      ? floorGapCm
+      : Math.min(this.cameraBestFlexibilityDistance, floorGapCm);
+    this.cameraScores.push(score);
+    if (this.cameraScores.length > 300) this.cameraScores.shift();
+    this.updateCameraDisplay();
+
+    if (statusMsg) {
+      if (floorGapCm < 8 && kneeAngle > 150) {
+        statusMsg.textContent = `아주 좋습니다 · 바닥까지 ${floorGapCm.toFixed(1)}cm · 손끝-발끝 ${handFootDistanceCm.toFixed(1)}cm`;
+        statusMsg.style.color = 'var(--color-primary)';
+      } else {
+        statusMsg.textContent = `바닥까지 ${floorGapCm.toFixed(1)}cm · 손끝-발끝 ${handFootDistanceCm.toFixed(1)}cm`;
+        statusMsg.style.color = 'var(--text-primary)';
+      }
+    }
+
+    this.drawFlexibilityDistanceLine(p, floorY, floorGapCm);
+  }
+
+  drawFlexibilityDistanceLine(p, floorY, floorGapCm) {
+    const canvas = document.getElementById('skeleton-canvas');
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const finger = this.poseVisibleSide === 'right' ? (p[20] || p[16]) : (p[19] || p[15]);
+    if (!finger) return;
+
+    const x = finger.x * canvas.width;
+    const handY = finger.y * canvas.height;
+    const groundY = floorY * canvas.height;
+    ctx.save();
+    ctx.strokeStyle = '#FBBF24';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x, handY);
+    ctx.lineTo(x, groundY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(Math.max(0, x - 25), groundY);
+    ctx.lineTo(Math.min(canvas.width, x + 25), groundY);
+    ctx.stroke();
+    ctx.restore();
   }
 
   calculateJointAngle(a, b, c) {
@@ -1528,6 +1657,11 @@ class HealthEnergyApp {
   stopWebcam() {
     this.cameraSessionId++;
 
+    if (this.cameraElapsedIntervalId) {
+      clearInterval(this.cameraElapsedIntervalId);
+      this.cameraElapsedIntervalId = null;
+    }
+
     if (this.poseAnalysisIntervalId) {
       clearInterval(this.poseAnalysisIntervalId);
       this.poseAnalysisIntervalId = null;
@@ -1567,10 +1701,10 @@ class HealthEnergyApp {
   }
 
   // Auto Tracking
-  toggleSensorTracking() {
+  async toggleSensorTracking() {
     const btn = document.getElementById('btn-sensor-toggle');
-    const speedBtn = document.getElementById('btn-sensor-speedup');
     const statusMsg = document.getElementById('auto-tracking-status');
+    const selectAutoEx = document.getElementById('select-auto-exercise');
 
     if (!btn) return;
 
@@ -1579,37 +1713,43 @@ class HealthEnergyApp {
       window.sensorSimulator.stop();
       btn.textContent = "계속";
       btn.style.background = "var(--color-primary)";
-      if (speedBtn) speedBtn.disabled = true;
       if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-pause"></i> 일시 정지됨';
       this.speakFeedback("측정이 일시정지되었습니다.");
     } else {
-      // Start
-      window.sensorSimulator.start(this.handleSensorUpdate);
+      // Start: 사용자가 버튼을 누른 시점에만 센서 권한 요청 및 측정이 시작됨
+      const exerciseName = selectAutoEx ? selectAutoEx.value : '';
+
+      btn.disabled = true;
+      btn.textContent = "센서 준비 중...";
+      if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-satellite-dish"></i> 센서 권한 확인 중...';
+
+      await window.sensorSimulator.start(this.handleSensorUpdate, exerciseName);
+
+      btn.disabled = false;
       btn.textContent = "일시 정지";
       btn.style.background = "var(--color-warning)";
-      if (speedBtn) speedBtn.disabled = false;
-      if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-person-running"></i> 실시간 자동 측정 중...';
-      this.speakFeedback("측정을 시작합니다.");
-    }
-  }
 
-  speedUpSensor() {
-    const speedBtn = document.getElementById('btn-sensor-speedup');
-    if (!speedBtn) return;
+      const data = window.sensorSimulator.getData();
 
-    window.sensorSimulator.increaseSpeed();
-    const data = window.sensorSimulator.getData();
-
-    if (data.speedMultiplier > 1) {
-      speedBtn.textContent = "걷기로 감속";
-      speedBtn.style.background = "rgba(99,102,241,0.2)";
-      speedBtn.style.borderColor = "var(--color-secondary)";
-      this.speakFeedback("가속 시뮬레이션을 작동합니다. 달리기 모드입니다.");
-    } else {
-      speedBtn.textContent = "가속 시뮬레이션";
-      speedBtn.style.background = "var(--card-bg)";
-      speedBtn.style.borderColor = "var(--card-border)";
-      this.speakFeedback("걷기 모드로 감속합니다.");
+      if (data.sensorUnavailable) {
+        window.sensorSimulator.stop();
+        btn.textContent = "다시 시도";
+        btn.style.background = "var(--color-primary)";
+        if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 스마트폰 움직임 센서 권한이 필요합니다';
+        this.speakFeedback("달리기 측정을 위해 스마트폰 움직임 센서 권한을 허용해주세요.");
+      } else if (data.runningShakeMode) {
+        if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-mobile-screen"></i> 스마트폰 흔들림으로 달리기 걸음을 측정 중...';
+        this.speakFeedback("스마트폰 흔들림으로 달리기 측정을 시작합니다.");
+      } else if (data.simulationFallback) {
+        if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 센서를 사용할 수 없어 시뮬레이션으로 진행합니다';
+        this.speakFeedback("기기 센서를 사용할 수 없어 시뮬레이션으로 측정을 시작합니다.");
+      } else if (data.realGPSActive) {
+        if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-satellite-dish"></i> GPS와 가속도 센서로 실시간 측정 중...';
+        this.speakFeedback("GPS와 가속도 센서로 측정을 시작합니다.");
+      } else {
+        if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-person-running"></i> 가속도 센서로 실시간 측정 중...';
+        this.speakFeedback("측정을 시작합니다.");
+      }
     }
   }
 
@@ -1622,7 +1762,9 @@ class HealthEnergyApp {
     const workoutType = selectAutoEx ? selectAutoEx.value : "수행";
     
     document.getElementById('auto-duration').textContent = `${min}:${sec}`;
-    document.getElementById('auto-steps').textContent = `${data.steps.toLocaleString()} 회`;
+    document.getElementById('auto-steps').textContent = data.runningShakeMode
+      ? `${data.steps.toLocaleString()} 걸음`
+      : `${data.steps.toLocaleString()} 회`;
     document.getElementById('auto-distance').textContent = `${data.distance} km`;
     document.getElementById('auto-calories').textContent = `${data.calories} kcal`;
     document.getElementById('auto-speed').innerHTML = `${data.speed} <span style="font-size: 1rem; font-weight: 500; color: var(--text-secondary);">km/h</span>`;
@@ -1642,14 +1784,6 @@ class HealthEnergyApp {
       toggleBtn.textContent = "시작";
       toggleBtn.style.background = "var(--color-primary)";
     }
-    const speedBtn = document.getElementById('btn-sensor-speedup');
-    if (speedBtn) {
-      speedBtn.disabled = true;
-      speedBtn.textContent = "가속 시뮬레이션";
-      speedBtn.style.background = "var(--card-bg)";
-      speedBtn.style.borderColor = "var(--card-border)";
-    }
-
     if (data.duration < 5 && data.steps < 10) {
       alert("기록할 데이터가 충분하지 않습니다 (최소 5초 이상 작동).");
       this.navigateTo('choose-workout');
@@ -2371,66 +2505,44 @@ class HealthEnergyApp {
     scoreContainer.innerHTML = '';
     durationContainer.innerHTML = '';
 
-    let labels = [];
-    let scores = [];
-    let durations = [];
-    let maxDuration = 60;
-
     const today = new Date();
-    const todayIndex = today.getDay(); // 0: Sun, 1: Mon, etc.
+    const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const scoreFor = logs => {
+      if (!logs.length) return 0;
+      const duration = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+      const calories = logs.reduce((sum, log) => sum + (Number(log.calories) || 0), 0);
+      const posture = logs.filter(log => Number.isFinite(log.postureScore));
+      const postureBonus = posture.length ? posture.reduce((sum, log) => sum + log.postureScore, 0) / posture.length * 0.12 : 0;
+      return Math.min(100, Math.round(duration * 0.7 + calories * 0.08 + postureBonus));
+    };
+    let buckets = [];
 
     if (this.reportTimeframe === 'weekly') {
-      labels = ['월', '화', '수', '목', '금', '토', '일'];
-      const dayMap = [6, 0, 1, 2, 3, 4, 5]; // Sun is 6, Mon is 0
-      
-      durations = [0, 0, 0, 0, 0, 0, 0];
-      scores = [52, 60, 58, 72, 65, 80, 75]; // baseline mock scores
-
-      const todayScore = this.calculateHealthEnergy();
-      const todayIdxInArray = dayMap[todayIndex];
-      scores[todayIdxInArray] = todayScore;
-
-      const formatDate = (dateObj) => {
-        const yyyy = dateObj.getFullYear();
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const dd = String(dateObj.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-      };
-
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const dateStr = formatDate(d);
-        const dayOfWeek = d.getDay();
-        const idx = dayMap[dayOfWeek];
-
-        const dayLogs = this.logs.filter(log => log.date === dateStr);
-        const dayDuration = dayLogs.reduce((sum, log) => sum + log.duration, 0);
-        durations[idx] += dayDuration;
-      }
-
-      maxDuration = Math.max(60, ...durations);
+      const monday = new Date(today);
+      monday.setHours(0, 0, 0, 0);
+      monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+      buckets = Array.from({ length: 7 }, (_, index) => {
+        const start = new Date(monday); start.setDate(monday.getDate() + index);
+        return { label: ['월', '화', '수', '목', '금', '토', '일'][index], logs: this.logs.filter(log => log.date === localDate(start)) };
+      });
     } else if (this.reportTimeframe === 'monthly') {
-      labels = ['1주차', '2주차', '3주차', '4주차'];
-      
-      const thisWeekDuration = this.logs
-        .filter(log => {
-          const logDate = new Date(log.date);
-          const diffTime = Math.abs(today - logDate);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          return diffDays <= 7;
-        })
-        .reduce((sum, log) => sum + log.duration, 0);
-
-      durations = [140, 190, 110, Math.max(thisWeekDuration, 60)];
-      scores = [68, 75, 70, this.calculateHealthEnergy()];
-      maxDuration = Math.max(180, ...durations);
-    } else if (this.reportTimeframe === 'yearly') {
-      labels = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-      scores = [55, 62, 58, 70, 78, 72, 85, 88, 74, 90, 85, this.calculateHealthEnergy()];
-      durations = [320, 480, 410, 520, 590, 490, 610, 680, 540, 720, 690, 650];
-      maxDuration = Math.max(720, ...durations);
+      buckets = Array.from({ length: 4 }, (_, index) => {
+        const end = new Date(today); end.setHours(23, 59, 59, 999); end.setDate(today.getDate() - (3 - index) * 7);
+        const start = new Date(end); start.setHours(0, 0, 0, 0); start.setDate(end.getDate() - 6);
+        return { label: `${index + 1}주차`, logs: this.logs.filter(log => { const d = new Date(`${log.date}T00:00:00`); return d >= start && d <= end; }) };
+      });
+    } else {
+      const year = today.getFullYear();
+      buckets = Array.from({ length: 12 }, (_, index) => ({
+        label: `${index + 1}월`,
+        logs: this.logs.filter(log => { const d = new Date(`${log.date}T00:00:00`); return d.getFullYear() === year && d.getMonth() === index; })
+      }));
     }
+
+    const labels = buckets.map(bucket => bucket.label);
+    const durations = buckets.map(bucket => bucket.logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0));
+    const scores = buckets.map(bucket => scoreFor(bucket.logs));
+    const maxDuration = Math.max(1, ...durations);
 
     // Render Scores
     scores.forEach((score, index) => {

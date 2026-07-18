@@ -20,7 +20,7 @@
   <!-- FontAwesome for Premium Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Local Styles -->
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
@@ -388,6 +388,10 @@
               <option value="니 프레스">니 프레스</option>
               <option value="크런치">크런치</option>
             </optgroup>
+            <optgroup label="유연성">
+              <option value="서서 상체 숙이기">서서 상체 숙이기</option>
+              <option value="서서 윗몸 앞으로 굽히기">서서 윗몸 앞으로 굽히기</option>
+            </optgroup>
           </select>
         </div>
 
@@ -430,6 +434,10 @@
               <span class="stat-label">자세 점수</span>
               <span class="stat-value" id="camera-posture-score" style="font-size: 2rem; color: var(--color-secondary);">-- <span style="font-size: 1rem;">점</span></span>
             </div>
+            <div class="stat-box" id="camera-flexibility-distance-box" style="text-align: center; display: none;">
+              <span class="stat-label">바닥까지 추정 거리</span>
+              <span class="stat-value" id="camera-flexibility-distance" style="font-size: 2rem; color: var(--color-warning);">-- <span style="font-size: 1rem;">cm</span></span>
+            </div>
           </div>
 
           <div class="mock-box" style="margin-bottom: 20px; padding: 12px; font-size: 0.78rem; line-height: 1.55; color: var(--text-secondary);">
@@ -450,7 +458,7 @@
       <section id="screen-auto-tracking" class="app-screen">
         <div style="margin-bottom: 16px;">
           <h2 style="font-size: 1.4rem; font-weight: 800;">실시간 자동 측정</h2>
-          <p style="font-size: 0.8rem; color: var(--text-secondary);">스마트폰 GPS 및 센서 활동을 가상으로 시뮬레이션합니다.</p>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">달리기는 스마트폰의 규칙적인 흔들림을 걸음으로 감지합니다. 시작 후 휴대폰을 손에 들거나 주머니에 안정적으로 넣고 달려주세요.</p>
         </div>
 
         <!-- Exercise Selector -->
@@ -471,6 +479,9 @@
               <option value="니 레이즈">니 레이즈</option>
               <option value="니 프레스">니 프레스</option>
               <option value="크런치">크런치</option>
+            </optgroup>
+            <optgroup label="심폐지구력 운동">
+              <option value="달리기">달리기</option>
             </optgroup>
           </select>
         </div>
@@ -511,9 +522,8 @@
             </div>
           </div>
 
-          <div class="interactive-mock-controls" style="margin-bottom: 20px;">
+          <div class="interactive-mock-controls interactive-mock-controls--single" style="margin-bottom: 20px;">
             <button class="btn-primary" id="btn-sensor-toggle" style="background: var(--color-primary);">시작</button>
-            <button class="btn-secondary" id="btn-sensor-speedup" disabled>가속 시뮬레이션</button>
           </div>
 
           <button class="btn-primary" id="btn-finish-auto-workout" style="background: linear-gradient(to right, var(--color-secondary), var(--color-accent));">

@@ -541,6 +541,14 @@ body {
   margin-bottom: 20px;
 }
 
+.interactive-mock-controls--single {
+  grid-template-columns: 1fr;
+}
+
+.interactive-mock-controls--single .btn-primary {
+  min-height: 68px;
+}
+
 /* Timeline Timeline Items */
 .timeline-list {
   display: flex;
