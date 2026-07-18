@@ -147,9 +147,9 @@ class SensorSimulator {
       this._motionBaseline = (this._motionBaseline * 0.94) + (mag * 0.06);
       const shakeStrength = Math.abs(mag - this._motionBaseline);
       const now = Date.now();
-      const triggerThreshold = 1.15;
+      const triggerThreshold = 1.3;
       const releaseThreshold = 0.55;
-      const minStepInterval = 220;
+      const minStepInterval = 260;
 
       if (shakeStrength < releaseThreshold) this._shakeArmed = true;
 

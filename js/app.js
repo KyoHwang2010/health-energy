@@ -189,26 +189,34 @@ class HealthEnergyApp {
       });
     }
 
-    // Profile button (allows resetting profile / going back to onboarding)
+    // Profile button: reuse the onboarding form as an edit screen without deleting activity logs.
     const profileBtn = document.getElementById('btn-profile');
     if (profileBtn) {
       profileBtn.addEventListener('click', () => {
-        if (confirm('프로필 설정을 변경하시겠습니까? (이전 정보는 초기화됩니다)')) {
-          localStorage.removeItem('he_user_profile');
-          localStorage.removeItem('he_exercise_logs');
-          this.userProfile = null;
-          this.logs = [];
-          
-          // Reset onboarding steps display
-          const step1 = document.getElementById('onboarding-step-1');
-          const step2 = document.getElementById('onboarding-step-2');
-          if (step1 && step2) {
-            step1.style.display = 'block';
-            step2.style.display = 'none';
-          }
-          
-          this.navigateTo('onboarding');
+        const profile = this.userProfile || {};
+        const values = {
+          'input-name': profile.name,
+          'input-age': profile.age,
+          'input-gender': profile.gender,
+          'input-height': profile.height,
+          'input-weight': profile.weight,
+          'input-calorie-goal': profile.calorieGoal,
+          'input-duration-goal': profile.durationGoal,
+          'input-step-goal': profile.stepGoal
+        };
+        Object.entries(values).forEach(([id, value]) => {
+          const input = document.getElementById(id);
+          if (input && value !== undefined && value !== null) input.value = value;
+        });
+
+        const step1 = document.getElementById('onboarding-step-1');
+        const step2 = document.getElementById('onboarding-step-2');
+        if (step1 && step2) {
+          step1.style.display = 'block';
+          step2.style.display = 'none';
         }
+
+        this.navigateTo('onboarding');
       });
     }
 
@@ -262,7 +270,11 @@ class HealthEnergyApp {
             if (repLabel) repLabel.textContent = isFlexibility ? '운동시간' : `${val} 횟수`;
             if (btnSim) btnSim.textContent = `${val} 1회 성공`;
             const distanceBox = document.getElementById('camera-flexibility-distance-box');
+            const distanceLabel = document.getElementById('camera-flexibility-distance-label');
             if (distanceBox) distanceBox.style.display = isFlexibility ? '' : 'none';
+            if (distanceLabel) distanceLabel.textContent = val === '서서 윗몸 앞으로 굽히기'
+              ? '측정 중 바닥 거리 최솟값'
+              : '바닥까지 추정 거리';
             
             // Reset camera values
             this.cameraReps = 0;
@@ -549,6 +561,8 @@ class HealthEnergyApp {
     }
 
     this.updateUI();
+    const screenWrapper = document.querySelector('.screen-wrapper');
+    if (screenWrapper) screenWrapper.scrollTop = 0;
   }
 
   onboardingSubmit(e) {
@@ -778,7 +792,11 @@ class HealthEnergyApp {
     const repCountEl = document.getElementById('camera-rep-count');
     const postureScoreEl = document.getElementById('camera-posture-score');
     const distanceEl = document.getElementById('camera-flexibility-distance');
-    const isFlexibility = this.isCameraFlexibilityExercise(document.getElementById('select-camera-exercise')?.value);
+    const selectedExercise = document.getElementById('select-camera-exercise')?.value;
+    const isFlexibility = this.isCameraFlexibilityExercise(selectedExercise);
+    const displayedDistance = selectedExercise === '서서 윗몸 앞으로 굽히기'
+      ? this.cameraBestFlexibilityDistance
+      : this.cameraFlexibilityDistance;
 
     if (repCountEl) {
       repCountEl.innerHTML = isFlexibility ? this.formatCameraElapsed() : `${this.cameraReps} <span style="font-size: 1rem;">회</span>`;
@@ -796,8 +814,8 @@ class HealthEnergyApp {
     }
 
     if (distanceEl) {
-      distanceEl.innerHTML = isFlexibility && this.cameraFlexibilityDistance !== null
-        ? `${this.cameraFlexibilityDistance.toFixed(1)} <span style="font-size: 1rem;">cm</span>`
+      distanceEl.innerHTML = isFlexibility && displayedDistance !== null
+        ? `${displayedDistance.toFixed(1)} <span style="font-size: 1rem;">cm</span>`
         : `-- <span style="font-size: 1rem;">cm</span>`;
     }
   }
@@ -858,7 +876,7 @@ class HealthEnergyApp {
   }
 
   isCameraFlexibilityExercise(exercise) {
-    return ['서서 상체 숙이기', '서서 윗몸 앞으로 굽히기'].includes(exercise);
+    return exercise === '서서 윗몸 앞으로 굽히기';
   }
 
   async startWebcam() {
@@ -1127,7 +1145,6 @@ class HealthEnergyApp {
       '니 레이즈': [11, 12, 23, 24, 25, 26, 27, 28],
       '니 프레스': [11, 12, 23, 24, 25, 26, 27, 28],
       '크런치': [11, 12, 23, 24, 25, 26],
-      '서서 상체 숙이기': [11, 12, 23, 24, 25, 26, 27, 28, 19, 20, 31, 32],
       '서서 윗몸 앞으로 굽히기': [11, 12, 23, 24, 25, 26, 27, 28, 19, 20, 31, 32]
     };
     return requiredByExercise[exercise] || requiredByExercise['스쿼트'];
@@ -1333,11 +1350,15 @@ class HealthEnergyApp {
     this.updateCameraDisplay();
 
     if (statusMsg) {
+      const selectedExercise = document.getElementById('select-camera-exercise')?.value;
+      const minimumText = selectedExercise === '서서 윗몸 앞으로 굽히기'
+        ? ` · 최솟값 ${this.cameraBestFlexibilityDistance.toFixed(1)}cm`
+        : '';
       if (floorGapCm < 8 && kneeAngle > 150) {
-        statusMsg.textContent = `아주 좋습니다 · 바닥까지 ${floorGapCm.toFixed(1)}cm · 손끝-발끝 ${handFootDistanceCm.toFixed(1)}cm`;
+        statusMsg.textContent = `아주 좋습니다 · 현재 ${floorGapCm.toFixed(1)}cm${minimumText} · 손끝-발끝 ${handFootDistanceCm.toFixed(1)}cm`;
         statusMsg.style.color = 'var(--color-primary)';
       } else {
-        statusMsg.textContent = `바닥까지 ${floorGapCm.toFixed(1)}cm · 손끝-발끝 ${handFootDistanceCm.toFixed(1)}cm`;
+        statusMsg.textContent = `현재 바닥 거리 ${floorGapCm.toFixed(1)}cm${minimumText} · 손끝-발끝 ${handFootDistanceCm.toFixed(1)}cm`;
         statusMsg.style.color = 'var(--text-primary)';
       }
     }

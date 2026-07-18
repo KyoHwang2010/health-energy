@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#191919">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -47,9 +47,7 @@
       <!-- 1. Onboarding Screen -->
       <section id="screen-onboarding" class="app-screen active">
         <div class="onboarding-container">
-          <div style="font-size: 3rem; color: var(--color-primary); margin-bottom: 20px;">
-            <i class="fa-solid fa-heart-pulse"></i>
-          </div>
+          <div class="brand-mark" aria-hidden="true"></div>
           <h1 class="onboarding-title">HEALTH ENERGY</h1>
           <p class="onboarding-desc">사용자의 운동을 스마트하게 기록하고,<br>나만의 건강 에너지를 채우는 실천 관리 앱</p>
           
@@ -389,7 +387,6 @@
               <option value="크런치">크런치</option>
             </optgroup>
             <optgroup label="유연성">
-              <option value="서서 상체 숙이기">서서 상체 숙이기</option>
               <option value="서서 윗몸 앞으로 굽히기">서서 윗몸 앞으로 굽히기</option>
             </optgroup>
           </select>
@@ -435,7 +432,7 @@
               <span class="stat-value" id="camera-posture-score" style="font-size: 2rem; color: var(--color-secondary);">-- <span style="font-size: 1rem;">점</span></span>
             </div>
             <div class="stat-box" id="camera-flexibility-distance-box" style="text-align: center; display: none;">
-              <span class="stat-label">바닥까지 추정 거리</span>
+              <span class="stat-label" id="camera-flexibility-distance-label">바닥까지 추정 거리</span>
               <span class="stat-value" id="camera-flexibility-distance" style="font-size: 2rem; color: var(--color-warning);">-- <span style="font-size: 1rem;">cm</span></span>
             </div>
           </div>
@@ -719,20 +716,24 @@
     <!-- Bottom Navigation Bar (Hidden on onboarding) -->
     <nav class="nav-bar" id="app-navbar" style="display: none;">
       <a class="nav-item active" onclick="app.navigateTo('home')" id="nav-home">
-        <i class="fa-solid fa-house"></i>
-        <span>홈</span>
-      </a>
-      <a class="nav-item" onclick="app.navigateTo('choose-workout')" id="nav-choose">
-        <i class="fa-solid fa-circle-play"></i>
-        <span>운동 시작</span>
+        <i class="fa-solid fa-play"></i>
+        <span>대시보드</span>
       </a>
       <a class="nav-item" onclick="app.navigateTo('timeline')" id="nav-timeline">
-        <i class="fa-solid fa-list-ul"></i>
+        <i class="fa-solid fa-clipboard-list"></i>
         <span>기록</span>
+      </a>
+      <a class="nav-item nav-item--primary" onclick="app.navigateTo('choose-workout')" id="nav-choose" aria-label="운동 기록 추가">
+        <i class="fa-solid fa-plus"></i>
+        <span>운동 추가</span>
       </a>
       <a class="nav-item" onclick="app.navigateTo('report')" id="nav-report">
         <i class="fa-solid fa-chart-simple"></i>
         <span>분석</span>
+      </a>
+      <a class="nav-item" onclick="document.getElementById('btn-profile').click()" id="nav-profile">
+        <i class="fa-regular fa-user"></i>
+        <span>프로필</span>
       </a>
     </nav>
 
