@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Health Energy">
+  <meta name="format-detection" content="telephone=no">
+  <title>Health Energy - 건강과 웰빙</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/app-icon.svg">
+  <!-- Google Fonts Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Local Styles -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- App Header (Hidden on onboarding) -->
+    <header class="app-header" id="app-header" style="display: none;">
+      <div class="logo-text">HEALTH ENERGY</div>
+      <div class="header-actions">
+        <button class="header-btn" id="btn-profile" title="프로필 설정">
+          <i class="fa-solid fa-user"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Floating Action Button for Quick Workout Add -->
+    <button class="floating-action-btn" id="fab-add-workout" style="display: none;" title="운동 추가">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+
+    <!-- Main Screens Container -->
+    <main class="screen-wrapper">
+
+      <!-- 1. Onboarding Screen -->
+      <section id="screen-onboarding" class="app-screen active">
+        <div class="onboarding-container">
+          <div style="font-size: 3rem; color: var(--color-primary); margin-bottom: 20px;">
+            <i class="fa-solid fa-heart-pulse"></i>
+          </div>
+          <h1 class="onboarding-title">HEALTH ENERGY</h1>
+          <p class="onboarding-desc">사용자의 운동을 스마트하게 기록하고,<br>나만의 건강 에너지를 채우는 실천 관리 앱</p>
+          
+          <form id="form-onboarding" style="width: 100%;">
+            <!-- STEP 1: Profile Information -->
+            <div id="onboarding-step-1" style="width: 100%;">
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--color-primary); margin-bottom: 12px; text-align: center;">[1단계] 신체 정보 입력</div>
+              
+              <div class="form-group">
+                <label for="input-name">이름 (닉네임)</label>
+                <input type="text" id="input-name" class="form-input" placeholder="이름을 입력하세요" required>
+              </div>
+              
+              <div class="stats-grid">
+                <div class="form-group">
+                  <label for="input-age">나이</label>
+                  <input type="number" id="input-age" class="form-input" placeholder="세" required min="1" max="120">
+                </div>
+                <div class="form-group">
+                  <label for="input-gender">성별</label>
+                  <select id="input-gender" class="form-select" required>
+                    <option value="male">남성</option>
+                    <option value="female">여성</option>
+                    <option value="other">기타</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="stats-grid">
+                <div class="form-group">
+                  <label for="input-height">키 (cm)</label>
+                  <input type="number" id="input-height" class="form-input" placeholder="cm" required min="50" max="250">
+                </div>
+                <div class="form-group">
+                  <label for="input-weight">몸무게 (kg)</label>
+                  <input type="number" id="input-weight" class="form-input" placeholder="kg" required min="10" max="300">
+                </div>
+              </div>
+
+              <button type="button" id="btn-onboarding-next" class="btn-primary" style="margin-top: 15px; width: 100%;">
+                목표 설정하기 <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <!-- STEP 2: Goal Settings (hidden initially) -->
+            <div id="onboarding-step-2" style="width: 100%; display: none;">
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--color-primary); margin-bottom: 12px; text-align: center;">[2단계] 하루 활동 목표 설정</div>
+              
+              <div class="form-group">
+                <label for="input-calorie-goal">하루 목표 소모 칼로리 (kcal)</label>
+                <input type="number" id="input-calorie-goal" class="form-input" value="500" min="50" max="10000" required>
+              </div>
+
+              <div class="form-group">
+                <label for="input-duration-goal">하루 목표 운동 시간 (분)</label>
+                <input type="number" id="input-duration-goal" class="form-input" value="60" min="5" max="1440" required>
+              </div>
+
+              <div class="form-group">
+                <label for="input-step-goal">하루 목표 걸음 수 (걸음)</label>
+                <input type="number" id="input-step-goal" class="form-input" value="10000" step="1000" min="1000" max="100000" required>
+              </div>
+
+              <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button type="button" id="btn-onboarding-back" class="btn-secondary" style="flex: 1; padding: 12px;">
+                  <i class="fa-solid fa-chevron-left"></i> 이전
+                </button>
+                <button type="submit" class="btn-primary" style="flex: 2; padding: 12px;">
+                  시작하기 <i class="fa-solid fa-circle-check"></i>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- 2. Home Dashboard Screen -->
+      <section id="screen-home" class="app-screen">
+        <!-- Welcoming -->
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size: 1.4rem; font-weight: 800;">안녕하세요, <span id="user-display-name">사용자</span>님!</h2>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">날짜별 건강 에너지를 되돌아보세요.</p>
+          </div>
+        </div>
+        <!-- Health Energy Gauge Card -->
+        <div class="glass-card" style="text-align: center;">
+          <div class="glass-card-title" style="margin-bottom: 8px;">
+            <span>오늘의 건강 에너지</span>
+            <i class="fa-solid fa-bolt" style="color: var(--color-warning);"></i>
+          </div>
+          
+          <!-- Arrow-based Date Selector inside Card -->
+          <div style="display: flex; justify-content: center; align-items: center; gap: 16px; margin: 0px auto 14px; max-width: 200px;">
+            <button id="btn-home-prev-date" class="header-btn" style="width: 28px; height: 28px; font-size: 0.75rem;" title="다음 날짜">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span id="home-selected-date-label" style="font-size: 0.85rem; font-weight: 700; color: var(--color-primary); flex: 1; text-align: center; white-space: nowrap;">오늘</span>
+            <button id="btn-home-next-date" class="header-btn" style="width: 28px; height: 28px; font-size: 0.75rem;" title="이전 날짜" disabled>
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+          
+          <div class="energy-gauge-container">
+            <svg class="svg-gauge">
+              <defs>
+                <linearGradient id="energyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="var(--color-secondary)" />
+                  <stop offset="100%" stop-color="var(--color-primary)" />
+                </linearGradient>
+              </defs>
+              <circle class="svg-gauge-bg" cx="85" cy="85" r="70" />
+              <circle class="svg-gauge-fill" id="energy-gauge-fill" cx="85" cy="85" r="70" />
+            </svg>
+            <div class="gauge-center-text">
+              <span class="gauge-value" id="energy-score-val">0</span>
+              <span class="gauge-unit">POINTS</span>
+            </div>
+            <div class="energy-status-badge" id="energy-status-text">에너지 충전 대기 중</div>
+          </div>
+
+          <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; max-width: 280px; margin: 0 auto 15px;">
+            운동 시간, 빈도, 연속성 등을 종합적으로 반영하여 실시간으로 에너지가 충전됩니다.
+          </p>
+          <button class="btn-primary" id="btn-toggle-energy-details" style="width: 100%; border-radius: 16px; padding: 14px; font-weight: 700; background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
+            <i class="fa-solid fa-circle-info"></i> 자세히 알아보기
+          </button>
+          
+          <!-- Detailed Energy info container -->
+          <div id="energy-details-container" style="display: none; margin-top: 16px; text-align: left; padding: 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); animation: fadeIn 0.3s ease;">
+            <h4 style="font-size: 0.85rem; font-weight: 700; margin-bottom: 12px; color: var(--color-primary); display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-chart-pie"></i> 요소별 에너지 분석
+            </h4>
+            
+            <!-- 근력 -->
+            <div style="margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;">
+                <span>💪 근력 (Muscle Strength)</span>
+                <span id="score-strength" style="font-weight: 700;">0%</span>
+              </div>
+              <div style="height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 3px; overflow: hidden;">
+                <div id="bar-strength" style="height: 100%; width: 0%; background: var(--color-accent); border-radius: 3px; transition: width 0.5s ease;"></div>
+              </div>
+            </div>
+
+            <!-- 근지구력 -->
+            <div style="margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;">
+                <span>🏋️ 근지구력 (Muscle Endurance)</span>
+                <span id="score-endurance" style="font-weight: 700;">0%</span>
+              </div>
+              <div style="height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 3px; overflow: hidden;">
+                <div id="bar-endurance" style="height: 100%; width: 0%; background: var(--color-warning); border-radius: 3px; transition: width 0.5s ease;"></div>
+              </div>
+            </div>
+
+            <!-- 심폐지구력 -->
+            <div style="margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;">
+                <span>🫁 심폐지구력 (Cardiorespiratory)</span>
+                <span id="score-cardio" style="font-weight: 700;">0%</span>
+              </div>
+              <div style="height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 3px; overflow: hidden;">
+                <div id="bar-cardio" style="height: 100%; width: 0%; background: var(--color-secondary); border-radius: 3px; transition: width 0.5s ease;"></div>
+              </div>
+            </div>
+
+            <!-- 유연성 -->
+            <div style="margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;">
+                <span>🧘 유연성 (Flexibility)</span>
+                <span id="score-flexibility" style="font-weight: 700;">0%</span>
+              </div>
+              <div style="height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 3px; overflow: hidden;">
+                <div id="bar-flexibility" style="height: 100%; width: 0%; background: var(--color-primary); border-radius: 3px; transition: width 0.5s ease;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today Summary Header -->
+        <div style="margin: 22px 0 10px; display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
+          <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-square-poll-vertical" style="color: var(--color-primary);"></i> 오늘의 활동 요약
+          </h3>
+          <button id="btn-edit-goals" style="background: transparent; border: none; color: var(--color-primary); font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2); transition: all 0.2s;">
+            <i class="fa-solid fa-pen-to-square"></i> 목표 수정
+          </button>
+        </div>
+
+        <!-- Today Summary Card -->
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label"><i class="fa-solid fa-fire" style="color: var(--color-accent);"></i> 활동 칼로리</span>
+            <span class="stat-value"><span id="today-calories">0</span> / <span id="goal-calories">500</span> kcal</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label"><i class="fa-solid fa-shoe-prints" style="color: var(--color-primary);"></i> 걸음 수</span>
+            <span class="stat-value"><span id="today-steps">0</span> / <span id="goal-steps">10,000</span></span>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label"><i class="fa-solid fa-clock" style="color: var(--color-secondary);"></i> 운동 시간</span>
+            <span class="stat-value"><span id="today-duration">0</span> / <span id="goal-duration">60</span> 분</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label"><i class="fa-solid fa-calendar-check" style="color: var(--color-warning);"></i> 연속 실천</span>
+            <span class="stat-value"><span id="user-streak">0</span> 일 연속 🔥</span>
+          </div>
+        </div>
+
+        <!-- Recommended Workouts -->
+        <div class="glass-card">
+          <div class="glass-card-title" style="margin-bottom: 6px;">오늘의 추천 운동</div>
+          
+          <!-- Deficient element-based recommendations -->
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 12px; padding: 0 4px;" id="home-recommendation-reason">
+            최근 1주일간 분석 결과...
+          </div>
+          
+          <div class="exercise-list" id="home-recommendation-list">
+            <div class="exercise-item" onclick="app.selectWorkoutPreset('Squats')">
+              <div class="exercise-info">
+                <div class="exercise-icon"><i class="fa-solid fa-child"></i></div>
+                <div>
+                  <div class="exercise-name">스쿼트 (Squats)</div>
+                  <div class="exercise-meta">자세 분석 시범 서비스 가능</div>
+                </div>
+              </div>
+              <i class="fa-solid fa-chevron-right" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
+            </div>
+
+            <div class="exercise-item" onclick="app.selectWorkoutPreset('Walking')">
+              <div class="exercise-info">
+                <div class="exercise-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--color-primary);"><i class="fa-solid fa-person-running"></i></div>
+                <div>
+                  <div class="exercise-name">야외 걷기/달리기</div>
+                  <div class="exercise-meta">GPS 자동 이동 측정 시뮬레이션</div>
+                </div>
+              </div>
+              <i class="fa-solid fa-chevron-right" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2.5 Recommendation Screen -->
+      <section id="screen-recommendation" class="app-screen">
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 1.4rem; font-weight: 800;">맞춤 운동 추천</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">현재 건강 상태를 분석하여 알맞은 운동을 제안합니다.</p>
+        </div>
+
+        <div class="glass-card" style="text-align: center; padding: 40px 20px;" id="recommendation-loading">
+          <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 3rem; color: var(--color-primary); margin-bottom: 20px;"></i>
+          <h3 style="font-size: 1.1rem; margin-bottom: 8px;">최적의 운동을 찾고 있습니다...</h3>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">최근 활동 기록과 건강 에너지를 분석 중입니다.</p>
+        </div>
+
+        <div id="recommendation-result" style="display: none;">
+          <!-- Content dynamically rendered via JS -->
+        </div>
+
+        <button class="btn-secondary" onclick="app.navigateTo('home')" style="margin-top: 20px;">
+          <i class="fa-solid fa-arrow-left"></i> 홈으로 돌아가기
+        </button>
+      </section>
+
+      <!-- 3. Selection Screen (Select Exercise Mode) -->
+      <section id="screen-choose-workout" class="app-screen">
+        <div style="margin-bottom: 24px;">
+          <h2 style="font-size: 1.4rem; font-weight: 800;">기록 방식 선택</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">운동을 기록할 상황과 방법을 골라주세요.</p>
+        </div>
+
+        <div class="selection-card" onclick="app.navigateTo('camera-workout')">
+          <div class="selection-card-icon">
+            <i class="fa-solid fa-camera"></i>
+          </div>
+          <div class="selection-card-details">
+            <div class="selection-card-title">카메라로 활동 기록</div>
+            <div class="selection-card-desc">기기 내 웹캠을 활용해 횟수 측정과 스쿼트 자세 분석 피드백을 체험합니다. (시뮬레이션 버전)</div>
+          </div>
+        </div>
+
+        <div class="selection-card" onclick="app.navigateTo('auto-tracking')">
+          <div class="selection-card-icon" style="color: var(--color-secondary);">
+            <i class="fa-solid fa-location-crosshairs"></i>
+          </div>
+          <div class="selection-card-details">
+            <div class="selection-card-title">자동 운동 측정</div>
+            <div class="selection-card-desc">걷기, 달리기와 같은 활동을 실시간 이동량으로 자동 측정해 드립니다.</div>
+          </div>
+        </div>
+
+        <div class="selection-card" onclick="app.navigateTo('direct-input')">
+          <div class="selection-card-icon" style="color: var(--color-accent);">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </div>
+          <div class="selection-card-details">
+            <div class="selection-card-title">직접 활동 기록</div>
+            <div class="selection-card-desc">헬스, 수영, 축구 등 다른 운동 결과를 시간과 강도, 간단한 메모와 함께 수동으로 적어 기록합니다.</div>
+          </div>
+        </div>
+
+        <button class="btn-secondary" onclick="app.navigateTo('home')" style="margin-top: 10px;">
+          <i class="fa-solid fa-arrow-left"></i> 홈으로 가기
+        </button>
+      </section>
+
+      <!-- 4. Camera Workout Simulation Screen -->
+      <section id="screen-camera-workout" class="app-screen">
+        <div style="margin-bottom: 16px;">
+          <h2 style="font-size: 1.4rem; font-weight: 800;">카메라로 활동 기록</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">기기 내 웹캠을 활용해 횟수 측정과 자세 분석 피드백을 진행합니다.</p>
+        </div>
+
+        <!-- Exercise Selector -->
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="select-camera-exercise">측정할 운동 선택</label>
+          <select id="select-camera-exercise" class="form-select" required>
+            <option value="" disabled selected hidden>측정할 운동을 선택해주세요.</option>
+            <optgroup label="근력 운동">
+              <option value="바이셉 컬">바이셉 컬</option>
+              <option value="레터럴 레이즈">레터럴 레이즈</option>
+              <option value="오버헤드 프레스">오버헤드 프레스</option>
+            </optgroup>
+            <optgroup label="근지구력 운동">
+              <option value="스쿼트">스쿼트</option>
+              <option value="팔굽혀펴기">팔굽혀펴기</option>
+              <option value="윗몸일으키기">윗몸일으키기</option>
+              <option value="레그레이즈">레그레이즈</option>
+              <option value="니 레이즈">니 레이즈</option>
+              <option value="니 프레스">니 프레스</option>
+              <option value="크런치">크런치</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Placeholder when no exercise is selected -->
+        <div id="camera-exercise-placeholder" class="mock-box" style="height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; background: rgba(255,255,255,0.01); border: 1px dashed rgba(255,255,255,0.1); margin-bottom: 20px;">
+          <i class="fa-solid fa-camera-rotate" style="font-size: 2.5rem; color: var(--text-secondary); opacity: 0.5;"></i>
+          <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">측정할 운동 종류를 선택하시면<br>카메라 기능이 활성화됩니다.</span>
+        </div>
+
+        <!-- Camera Workspace Container -->
+        <div id="camera-workspace-container" style="display: none;">
+          <div class="mock-box" id="camera-viewport" style="margin-bottom: 20px; position: relative; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; height: 260px;">
+            <!-- Real webcam video element -->
+            <video id="webcam-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; transform: scaleX(-1);"></video>
+            
+            <!-- Real-time skeleton canvas overlay -->
+            <canvas id="skeleton-canvas" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; transform: scaleX(-1);"></canvas>
+            
+            <!-- Hidden processing canvas -->
+            <canvas id="processing-canvas" style="display: none;" width="320" height="240"></canvas>
+
+            <button type="button" id="btn-switch-camera" class="camera-switch-btn" aria-label="전면 및 후면 카메라 전환" title="카메라 전환">
+              <i class="fa-solid fa-camera-rotate"></i>
+            </button>
+            
+            <div class="camera-indicator" style="z-index: 2;">
+              <div class="camera-dot"></div>
+              <span>실시간 카메라 스트림</span>
+            </div>
+            
+            <span style="z-index: 2; font-weight: 500; font-size: 0.8rem; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 4px;" id="camera-status-msg">자세를 잡고 대기하세요.</span>
+          </div>
+
+          <div class="stats-grid" style="margin-bottom: 16px;">
+            <div class="stat-box" style="text-align: center;">
+              <span class="stat-label" id="camera-rep-label">수행 횟수</span>
+              <span class="stat-value" id="camera-rep-count" style="font-size: 2rem; color: var(--color-primary);">0 <span style="font-size: 1rem;">회</span></span>
+            </div>
+            <div class="stat-box" style="text-align: center;">
+              <span class="stat-label">자세 점수</span>
+              <span class="stat-value" id="camera-posture-score" style="font-size: 2rem; color: var(--color-secondary);">-- <span style="font-size: 1rem;">점</span></span>
+            </div>
+          </div>
+
+          <div class="mock-box" style="margin-bottom: 20px; padding: 12px; font-size: 0.78rem; line-height: 1.55; color: var(--text-secondary);">
+            선택한 운동에 필요한 주요 관절은 한쪽만 보여도 측정됩니다. 파란색으로 표시되는 부위를 보여주고 시작 자세와 끝 자세를 잠깐 유지해 주세요.
+          </div>
+
+          <button class="btn-primary" id="btn-finish-camera-workout">
+            운동 끝내고 기록 저장
+          </button>
+        </div>
+
+        <button class="btn-secondary" onclick="app.navigateTo('choose-workout')" style="margin-top: 10px;">
+          뒤로 가기
+        </button>
+      </section>
+
+      <!-- 5. Auto Tracking Screen -->
+      <section id="screen-auto-tracking" class="app-screen">
+        <div style="margin-bottom: 16px;">
+          <h2 style="font-size: 1.4rem; font-weight: 800;">실시간 자동 측정</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">스마트폰 GPS 및 센서 활동을 가상으로 시뮬레이션합니다.</p>
+        </div>
+
+        <!-- Exercise Selector -->
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="select-auto-exercise">측정할 운동 선택</label>
+          <select id="select-auto-exercise" class="form-select" required>
+            <option value="" disabled selected hidden>측정할 운동을 선택해주세요.</option>
+            <optgroup label="근력 운동">
+              <option value="바이셉 컬">바이셉 컬</option>
+              <option value="레터럴 레이즈">레터럴 레이즈</option>
+              <option value="오버헤드 프레스">오버헤드 프레스</option>
+            </optgroup>
+            <optgroup label="근지구력 운동">
+              <option value="스쿼트">스쿼트</option>
+              <option value="팔굽혀펴기">팔굽혀펴기</option>
+              <option value="윗몸일으키기">윗몸일으키기</option>
+              <option value="레그레이즈">레그레이즈</option>
+              <option value="니 레이즈">니 레이즈</option>
+              <option value="니 프레스">니 프레스</option>
+              <option value="크런치">크런치</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Placeholder when no exercise is selected -->
+        <div id="auto-exercise-placeholder" class="mock-box" style="height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; background: rgba(255,255,255,0.01); border: 1px dashed rgba(255,255,255,0.1); margin-bottom: 20px;">
+          <i class="fa-solid fa-person-running" style="font-size: 2.5rem; color: var(--text-secondary); opacity: 0.5;"></i>
+          <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">측정할 운동 종류를 선택하시면<br>자동 측정 센서 기능이 활성화됩니다.</span>
+        </div>
+
+        <!-- Auto Workspace Container -->
+        <div id="auto-workspace-container" style="display: none;">
+          <div class="mock-box" style="height: 160px; background: radial-gradient(circle, #1e1b4b 0%, #020617 100%); margin-bottom: 20px;">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">실시간 페이스 속도계</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--color-secondary);" id="auto-speed">0.0 <span style="font-size: 1rem; font-weight: 500; color: var(--text-secondary);">km/h</span></div>
+            <div style="margin-top: 8px; font-size: 0.75rem; color: var(--color-primary);" id="auto-tracking-status"><i class="fa-solid fa-pause"></i> 일시 정지됨</div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-label">이동 시간</span>
+              <span class="stat-value" id="auto-duration">00:00</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label" id="auto-steps-label">걸음 수</span>
+              <span class="stat-value" id="auto-steps">0 걸음</span>
+            </div>
+          </div>
+
+          <div class="stats-grid" style="margin-bottom: 16px;">
+            <div class="stat-box">
+              <span class="stat-label">이동 거리</span>
+              <span class="stat-value" id="auto-distance">0.00 km</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">소모 칼로리</span>
+              <span class="stat-value" id="auto-calories">0 kcal</span>
+            </div>
+          </div>
+
+          <div class="interactive-mock-controls" style="margin-bottom: 20px;">
+            <button class="btn-primary" id="btn-sensor-toggle" style="background: var(--color-primary);">시작</button>
+            <button class="btn-secondary" id="btn-sensor-speedup" disabled>가속 시뮬레이션</button>
+          </div>
+
+          <button class="btn-primary" id="btn-finish-auto-workout" style="background: linear-gradient(to right, var(--color-secondary), var(--color-accent));">
+            측정 완료 및 저장
+          </button>
+        </div>
+        
+        <button class="btn-secondary" onclick="app.navigateTo('choose-workout')" style="margin-top: 10px;">
+          뒤로 가기
+        </button>
+      </section>
+
+      <!-- 6. Direct Input Form Screen -->
+      <section id="screen-direct-input" class="app-screen">
+        <div style="margin-bottom: 16px;">
+          <h2 style="font-size: 1.4rem; font-weight: 800;">직접 활동 기록</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">수행하신 운동 종류와 결과를 입력하세요.</p>
+        </div>
+
+        <form id="form-direct-workout">
+          <div class="form-group">
+            <label for="select-exercise-type">운동 종류 (선택)</label>
+            <select id="select-exercise-type" class="form-select" required>
+              <option value="" disabled selected hidden>운동 종류를 선택해주세요.</option>
+              <optgroup label="근력 운동">
+                <option value="바이셉 컬" data-unit="회" data-name="바이셉 컬">바이셉 컬</option>
+                <option value="레터럴 레이즈" data-unit="회" data-name="레터럴 레이즈">레터럴 레이즈</option>
+                <option value="오버헤드 프레스" data-unit="회" data-name="오버헤드 프레스">오버헤드 프레스</option>
+              </optgroup>
+              <optgroup label="근지구력 운동">
+                <option value="스쿼트" data-unit="회" data-name="스쿼트">스쿼트</option>
+                <option value="팔굽혀펴기" data-unit="회" data-name="팔굽혀펴기">팔굽혀펴기</option>
+                <option value="윗몸일으키기" data-unit="회" data-name="윗몸일으키기">윗몸일으키기</option>
+                <option value="레그레이즈" data-unit="회" data-name="레그레이즈">레그레이즈</option>
+                <option value="니 레이즈" data-unit="회" data-name="니 레이즈">니 레이즈</option>
+                <option value="니 프레스" data-unit="회" data-name="니 프레스">니 프레스</option>
+                <option value="크런치" data-unit="회" data-name="크런치">크런치</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- Measurement Input Group (Conditional) -->
+          <div id="direct-measurement-group" style="display: none; margin-bottom: 15px;" class="form-group">
+            <label id="label-direct-measurement" for="input-direct-measurement">측정 기록</label>
+            <input type="number" step="0.1" id="input-direct-measurement" class="form-input" placeholder="측정값을 입력하세요">
+          </div>
+
+          <div class="stats-grid">
+            <div class="form-group">
+              <label for="input-direct-duration">운동 시간 (분)</label>
+              <input type="number" id="input-direct-duration" class="form-input" min="1" max="1440" required placeholder="30">
+            </div>
+            <div class="form-group" id="direct-reps-group" style="display: none;">
+              <label for="input-direct-reps">수행 횟수 (회)</label>
+              <input type="number" id="input-direct-reps" class="form-input" min="1" max="1000" placeholder="20">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="select-direct-intensity">주관적 강도</label>
+            <select id="select-direct-intensity" class="form-select" required>
+              <option value="" disabled selected hidden>운동 강도를 선택해주세요.</option>
+              <option value="low">가벼움 (산책 수준)</option>
+              <option value="medium">보통 (적당히 땀이 남)</option>
+              <option value="high">힘듦 (숨이 많이 참)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="input-direct-memo">한 줄 메모 / 피드백</label>
+            <textarea id="input-direct-memo" class="form-input" rows="3" style="resize: none;" placeholder="오늘 운동은 어떠셨나요? 느낌을 메모해보세요."></textarea>
+          </div>
+
+          <button type="submit" class="btn-primary">
+            운동 기록 저장 <i class="fa-solid fa-circle-check"></i>
+          </button>
+          
+          <button type="button" class="btn-secondary" onclick="app.navigateTo('choose-workout')" style="margin-top: 10px;">
+            뒤로 가기
+          </button>
+        </form>
+      </section>
+
+      <!-- 7. Timeline Screen -->
+      <section id="screen-timeline" class="app-screen">
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size: 1.4rem; font-weight: 800;">운동 타임라인</h2>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">차곡차곡 쌓인 건강 기록들</p>
+          </div>
+          <button class="header-btn" id="btn-clear-logs" title="기록 전체 초기화" style="border-color: rgba(244, 63, 94, 0.3); color: var(--color-accent);">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+
+        <!-- Date Filters Scrollbar -->
+        <div class="date-filter-container" id="timeline-date-filters">
+          <!-- Dynamically populated via JS -->
+        </div>
+
+        <div id="timeline-empty-state" style="text-align: center; padding: 40px 10px; color: var(--text-secondary);">
+          <i class="fa-regular fa-calendar-times" style="font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5;"></i>
+          <p style="font-size: 0.85rem;">아직 기록된 운동이 없습니다.<br>첫 운동을 기록해보세요!</p>
+        </div>
+
+        <div class="timeline-list" id="timeline-items-container">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </section>
+
+      <!-- 8. Reports Screen -->
+      <section id="screen-report" class="app-screen">
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 1.4rem; font-weight: 800;">분석 리포트</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">활동 기록 및 에너지 변화 요인 분석</p>
+        </div>
+
+        <!-- Interactive Calendar -->
+        <div class="glass-card">
+          <div class="glass-card-title">
+            운동 캘린더
+            <div id="calendar-month-year" style="font-size: 0.9rem; font-weight: 700; color: var(--color-primary); background: rgba(16,185,129,0.1); padding: 4px 10px; border-radius: 12px;">2023 10월</div>
+          </div>
+          <div class="calendar-container">
+            <div class="calendar-header">
+              <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+            </div>
+            <div class="calendar-grid" id="calendar-grid">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+          <div id="calendar-selected-logs" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; min-height: 50px;">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); text-align: center;">날짜를 선택하면 기록이 표시됩니다.</p>
+          </div>
+        </div>
+
+        <!-- Timeframe Selector -->
+        <div class="timeframe-group">
+          <button class="btn-timeframe active" onclick="app.setReportTimeframe('weekly')" id="btn-tf-weekly">주간</button>
+          <button class="btn-timeframe" onclick="app.setReportTimeframe('monthly')" id="btn-tf-monthly">월간</button>
+          <button class="btn-timeframe" onclick="app.setReportTimeframe('yearly')" id="btn-tf-yearly">연간</button>
+        </div>
+
+        <!-- 1. Health Energy Score Graph Card -->
+        <div class="glass-card">
+          <div class="glass-card-title">
+            <span id="label-energy-score-title">주간 건강 에너지 점수</span>
+            <i class="fa-solid fa-bolt" style="color: var(--color-warning);"></i>
+          </div>
+          <div class="chart-container" id="chart-energy-score">
+            <!-- Dynamically populated via JS -->
+          </div>
+          <p style="font-size: 0.7rem; color: var(--text-secondary); text-align: center;" id="desc-energy-score">
+            기간별 평균 에너지 상태를 보여줍니다.
+          </p>
+        </div>
+
+        <!-- 2. Workout Duration Graph Card -->
+        <div class="glass-card">
+          <div class="glass-card-title">
+            <span id="label-workout-duration-title">주간 운동 시간 (분)</span>
+            <i class="fa-solid fa-clock" style="color: var(--color-secondary);"></i>
+          </div>
+          <div class="chart-container" id="chart-workout-duration">
+            <!-- Dynamically populated via JS -->
+          </div>
+          <p style="font-size: 0.7rem; color: var(--text-secondary); text-align: center;" id="desc-workout-duration">
+            기간별 총 운동 수행 시간의 변화입니다.
+          </p>
+        </div>
+
+        <!-- Feedback Analysis -->
+        <div class="glass-card">
+          <div class="glass-card-title">종합 평가 및 가이드라인</div>
+          <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-primary);">
+            <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+              <span style="color: var(--color-primary); font-size: 1rem;"><i class="fa-solid fa-circle-check"></i></span>
+              <p id="report-text-consistency">주간 일관성을 분석 중입니다. 꾸준히 기록을 채워보세요.</p>
+            </div>
+            <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+              <span style="color: var(--color-secondary); font-size: 1rem;"><i class="fa-solid fa-dumbbell"></i></span>
+              <p id="report-text-volume">활동 시간 및 세기가 권장 수준에 맞게 진행되는지 모니터링됩니다.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <span style="color: var(--color-accent); font-size: 1rem;"><i class="fa-solid fa-heart"></i></span>
+              <p id="report-text-posture">스쿼트 자세 점수 피드백에 맞춰 신체 균형 상태를 진단합니다.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+    <!-- Bottom Navigation Bar (Hidden on onboarding) -->
+    <nav class="nav-bar" id="app-navbar" style="display: none;">
+      <a class="nav-item active" onclick="app.navigateTo('home')" id="nav-home">
+        <i class="fa-solid fa-house"></i>
+        <span>홈</span>
+      </a>
+      <a class="nav-item" onclick="app.navigateTo('choose-workout')" id="nav-choose">
+        <i class="fa-solid fa-circle-play"></i>
+        <span>운동 시작</span>
+      </a>
+      <a class="nav-item" onclick="app.navigateTo('timeline')" id="nav-timeline">
+        <i class="fa-solid fa-list-ul"></i>
+        <span>기록</span>
+      </a>
+      <a class="nav-item" onclick="app.navigateTo('report')" id="nav-report">
+        <i class="fa-solid fa-chart-simple"></i>
+        <span>분석</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <!-- Goal Edit Modal -->
+  <div id="modal-edit-goals" class="modal-overlay" style="display: none;">
+    <div class="modal-content glass-card" style="max-width: 320px; width: 90%; text-align: left; padding: 20px; position: relative;">
+      <h3 style="font-size: 1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-sliders" style="color: var(--color-primary);"></i> 하루 목표 수정
+      </h3>
+      
+      <form id="form-edit-goals">
+        <div class="form-group">
+          <label for="edit-calorie-goal">하루 목표 소모 칼로리 (kcal)</label>
+          <input type="number" id="edit-calorie-goal" class="form-input" min="50" max="10000" required>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-duration-goal">하루 목표 운동 시간 (분)</label>
+          <input type="number" id="edit-duration-goal" class="form-input" min="5" max="1440" required>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-step-goal">하루 목표 걸음 수 (걸음)</label>
+          <input type="number" id="edit-step-goal" class="form-input" step="1000" min="1000" max="100000" required>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" id="btn-close-edit-goals" class="btn-secondary" style="flex: 1; padding: 10px; font-size: 0.85rem; border-radius: 10px;">취소</button>
+          <button type="submit" class="btn-primary" style="flex: 2; padding: 10px; font-size: 0.85rem; border-radius: 10px;">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Local Script Dependencies -->
+  <script src="js/sensors.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
