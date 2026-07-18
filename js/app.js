@@ -609,6 +609,26 @@ class HealthEnergyApp {
     this.renderHome();
   }
 
+  getExerciseCategory(selectElement) {
+    const option = selectElement?.options?.[selectElement.selectedIndex];
+    const label = option?.parentElement?.tagName === 'OPTGROUP' ? option.parentElement.label : '';
+    return {
+      '근력 운동': 'strength',
+      '근지구력 운동': 'endurance',
+      '심폐지구력 운동': 'cardio',
+      '유연성': 'flexibility'
+    }[label] || null;
+  }
+
+  inferExerciseCategory(type = '') {
+    const name = String(type).toLowerCase();
+    if (name.includes('달리기') || name.includes('걷기') || name.includes('자전거') || name.includes('수영') || name.includes('조깅')) return 'cardio';
+    if (name.includes('스트레칭') || name.includes('요가') || name.includes('필라테스') || name.includes('상체 숙이기') || name.includes('앞으로 굽히기')) return 'flexibility';
+    if (name.includes('크런치') || name.includes('레그레이즈') || name.includes('런지') || name.includes('윗몸일으키기') || name.includes('니 레이즈') || name.includes('니 프레스')) return 'endurance';
+    if (name.includes('스쿼트') || name.includes('푸쉬업') || name.includes('팔굽혀펴기') || name.includes('바이셉') || name.includes('레터럴') || name.includes('오버헤드') || name.includes('프레스')) return 'strength';
+    return null;
+  }
+
   saveDirectWorkout(e) {
     e.preventDefault();
 
@@ -658,6 +678,7 @@ class HealthEnergyApp {
       intensity,
       memo,
       method: 'direct',
+      category: this.getExerciseCategory(selectType) || this.inferExerciseCategory(type),
       measurementValue,
       measurementUnit,
       reps,
@@ -843,6 +864,7 @@ class HealthEnergyApp {
       intensity: avgScore > 80 ? "medium" : "low",
       memo: isFlexibility ? `[카메라] ${workoutType} ${this.formatCameraElapsed()} 측정 완료. 바닥까지 최단 거리: ${this.cameraBestFlexibilityDistance?.toFixed(1) ?? '--'}cm, 손끝과 발끝 거리: ${this.cameraHandFootDistance?.toFixed(1) ?? '--'}cm, 평균 점수: ${avgScore}점.` : `[카메라] ${workoutType} ${this.cameraReps}회 완료. 평균 점수: ${avgScore}점.`,
       method: "camera",
+      category: this.getExerciseCategory(selectCameraEx) || this.inferExerciseCategory(workoutType),
       reps: this.cameraReps,
       postureScore: avgScore,
       measurementValue: isFlexibility && this.cameraBestFlexibilityDistance !== null ? Number(this.cameraBestFlexibilityDistance.toFixed(1)) : null,
@@ -1823,6 +1845,7 @@ class HealthEnergyApp {
       intensity: data.speedMultiplier > 1.5 ? "high" : "medium",
       memo: `실시간 자동 측정 완료: ${workoutType} 동작을 약 ${data.steps}회 수행하였으며, ${data.distance}km 수준의 열량을 소비했습니다.`,
       method: "auto",
+      category: this.getExerciseCategory(selectAutoEx) || this.inferExerciseCategory(workoutType),
       date: now.toISOString().split('T')[0],
       time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     };
@@ -2647,11 +2670,10 @@ class HealthEnergyApp {
       targetDateStr = this.selectedHomeDate === 'today' ? new Date().toISOString().split('T')[0] : this.selectedHomeDate;
     }
 
-    // 1. Baselines
-    let strength = 35;
-    let endurance = 30;
-    let cardio = 40;
-    let flexibility = 25;
+    let strength = 0;
+    let endurance = 0;
+    let cardio = 0;
+    let flexibility = 0;
 
     // 2. Scan past 7 days of logs relative to targetDateStr
     const endDate = new Date(targetDateStr);
@@ -2665,34 +2687,22 @@ class HealthEnergyApp {
     const recentLogs = this.logs.filter(log => past7Days.includes(log.date));
 
     recentLogs.forEach(log => {
-      const type = log.type.toLowerCase();
-      const intensityMultiplier = log.intensity === 'high' ? 2.0 : log.intensity === 'medium' ? 1.2 : 0.6;
-      const points = log.duration * intensityMultiplier;
+      const category = log.category || this.inferExerciseCategory(log.type);
+      const intensityWeight = log.intensity === 'high' ? 1.3 : log.intensity === 'medium' ? 1 : 0.7;
+      const calorieWeight = 1 + Math.min(0.25, (Number(log.calories) || 0) / 1000);
+      const gain = (Number(log.duration) || 0) * intensityWeight * calorieWeight * 0.4;
 
-      // Classify exercise
-      if (type.includes('스쿼트') || type.includes('푸쉬업') || type.includes('풀업') || type.includes('친업') || type.includes('딥스') || type.includes('웨이트') || type.includes('로우') || type.includes('바이셉') || type.includes('레터럴') || type.includes('오버헤드') || type.includes('프레스')) {
-        strength += points * 0.8;
-        endurance += points * 0.4;
-      }
-      if (type.includes('플랭크') || type.includes('크런치') || type.includes('레그레이즈') || type.includes('런지') || type.includes('버피') || type.includes('계단') || type.includes('윗몸일으키기') || type.includes('윗몸말아올리기') || type.includes('니 레이즈') || type.includes('니 프레스')) {
-        endurance += points * 0.9;
-        cardio += points * 0.3;
-      }
-      if (type.includes('달리기') || type.includes('걷기') || type.includes('자전거') || type.includes('수영') || type.includes('조깅') || type.includes('클라이머')) {
-        cardio += points * 0.9;
-        endurance += points * 0.2;
-      }
-      if (type.includes('스트레칭') || type.includes('요가') || type.includes('필라테스') || type.includes('돌리기') || type.includes('암서클')) {
-        flexibility += points * 1.5;
-        endurance += points * 0.1;
-      }
+      if (category === 'strength') strength += gain;
+      if (category === 'endurance') endurance += gain;
+      if (category === 'cardio') cardio += gain;
+      if (category === 'flexibility') flexibility += gain;
     });
 
     return {
-      strength: Math.round(Math.max(10, Math.min(100, strength))),
-      endurance: Math.round(Math.max(10, Math.min(100, endurance))),
-      cardio: Math.round(Math.max(10, Math.min(100, cardio))),
-      flexibility: Math.round(Math.max(10, Math.min(100, flexibility)))
+      strength: Math.round(Math.max(0, Math.min(100, strength))),
+      endurance: Math.round(Math.max(0, Math.min(100, endurance))),
+      cardio: Math.round(Math.max(0, Math.min(100, cardio))),
+      flexibility: Math.round(Math.max(0, Math.min(100, flexibility)))
     };
   }
 
@@ -2701,81 +2711,13 @@ class HealthEnergyApp {
       targetDateStr = this.selectedHomeDate === 'today' ? new Date().toISOString().split('T')[0] : this.selectedHomeDate;
     }
 
-    // 1. Baselines
-    let strength = 35;
-    let endurance = 30;
-    let cardio = 40;
-    let flexibility = 25;
-
-    // 2. Scan past 7 days of logs relative to targetDateStr
-    const endDate = new Date(targetDateStr);
-    const past7Days = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(endDate);
-      d.setDate(endDate.getDate() - i);
-      past7Days.push(d.toISOString().split('T')[0]);
-    }
-
-    const recentLogs = this.logs.filter(log => past7Days.includes(log.date));
-
-    recentLogs.forEach(log => {
-      const type = log.type.toLowerCase();
-      const intensityMultiplier = log.intensity === 'high' ? 2.0 : log.intensity === 'medium' ? 1.2 : 0.6;
-      const points = log.duration * intensityMultiplier;
-
-      // Classify exercise
-      if (type.includes('스쿼트') || type.includes('푸쉬업') || type.includes('풀업') || type.includes('친업') || type.includes('딥스') || type.includes('웨이트') || type.includes('로우') || type.includes('바이셉') || type.includes('레터럴') || type.includes('오버헤드') || type.includes('프레스')) {
-        strength += points * 0.8;
-        endurance += points * 0.4;
-      }
-      if (type.includes('플랭크') || type.includes('크런치') || type.includes('레그레이즈') || type.includes('런지') || type.includes('버피') || type.includes('계단') || type.includes('윗몸일으키기') || type.includes('윗몸말아올리기') || type.includes('니 레이즈') || type.includes('니 프레스')) {
-        endurance += points * 0.9;
-        cardio += points * 0.3;
-      }
-      if (type.includes('달리기') || type.includes('걷기') || type.includes('자전거') || type.includes('수영') || type.includes('조깅') || type.includes('클라이머')) {
-        cardio += points * 0.9;
-        endurance += points * 0.2;
-      }
-      if (type.includes('스트레칭') || type.includes('요가') || type.includes('필라테스') || type.includes('돌리기') || type.includes('암서클')) {
-        flexibility += points * 1.5;
-        endurance += points * 0.1;
-      }
+    const details = this.getEnergyDetailsData(targetDateStr);
+    Object.entries(details).forEach(([key, value]) => {
+      const score = document.getElementById(`score-${key}`);
+      const bar = document.getElementById(`bar-${key}`);
+      if (score) score.textContent = `${value}%`;
+      if (bar) bar.style.width = `${value}%`;
     });
-
-    // 3. Cap at 100, min 10
-    strength = Math.round(Math.max(10, Math.min(100, strength)));
-    endurance = Math.round(Math.max(10, Math.min(100, endurance)));
-    cardio = Math.round(Math.max(10, Math.min(100, cardio)));
-    flexibility = Math.round(Math.max(10, Math.min(100, flexibility)));
-
-    // 4. Update DOM
-    const elStrengthVal = document.getElementById('score-strength');
-    const elStrengthBar = document.getElementById('bar-strength');
-    if (elStrengthVal && elStrengthBar) {
-      elStrengthVal.textContent = `${strength}%`;
-      elStrengthBar.style.width = `${strength}%`;
-    }
-
-    const elEnduranceVal = document.getElementById('score-endurance');
-    const elEnduranceBar = document.getElementById('bar-endurance');
-    if (elEnduranceVal && elEnduranceBar) {
-      elEnduranceVal.textContent = `${endurance}%`;
-      elEnduranceBar.style.width = `${endurance}%`;
-    }
-
-    const elCardioVal = document.getElementById('score-cardio');
-    const elCardioBar = document.getElementById('bar-cardio');
-    if (elCardioVal && elCardioBar) {
-      elCardioVal.textContent = `${cardio}%`;
-      elCardioBar.style.width = `${cardio}%`;
-    }
-
-    const elFlexibilityVal = document.getElementById('score-flexibility');
-    const elFlexibilityBar = document.getElementById('bar-flexibility');
-    if (elFlexibilityVal && elFlexibilityBar) {
-      elFlexibilityVal.textContent = `${flexibility}%`;
-      elFlexibilityBar.style.width = `${flexibility}%`;
-    }
   }
 }
 
